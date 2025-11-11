@@ -87,6 +87,17 @@
       </details>
     </aside>
   </main>
+<!-- Overlay de boot (préchargement immersif) -->
+<div id="boot" style="position:fixed;inset:0;display:none;place-items:center;background:color-mix(in srgb, Canvas, CanvasText 5%);z-index:9999">
+  <div style="width:min(520px,92vw);padding:16px;border:1px solid #ccc4;border-radius:12px;background:Canvas;color:CanvasText;box-shadow:0 10px 30px #0003;">
+    <div id="boot-msg" style="margin-bottom:10px">Le forum s’éveille…</div>
+    <div id="boot-bar" style="height:8px;background:#0001;border-radius:8px;overflow:hidden">
+      <div style="height:100%;width:var(--p,0%);background:#0b5bf5"></div>
+    </div>
+  </div>
+</div>
+
+<script type="module" src="./assets/app.js?v=4"></script>
 
   <!-- Scripts (ES modules) -->
   <script type="module" src="./assets/app.js?v=3"></script>
