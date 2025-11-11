@@ -1,4 +1,4 @@
-name = "belles-terres-worker"
+name = "worker-belles-terres"
 main = "src/index.js"
 compatibility_date = "2025-11-11"
 
