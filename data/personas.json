@@ -16,7 +16,8 @@
       "Faisons simple et solide, c’est mieux."
     ],
     "farewellStyle": "touchy",
-"piperVoice": "fr_FR-gilles-medium"
+"piperVoice": "fr_FR-mls-medium",
+     "piperSpeaker": 5
   },
   {
     "id": "naé-cham",
