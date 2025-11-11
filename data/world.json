@@ -1,14 +1,35 @@
 {
   "lieu": "Forum de la Côte-Nord (vents forts)",
-  "enjeux": [
-    "mines de terres rares (néodyme)",
-    "parcs éoliens côtiers",
-    "écotourisme sobre"
+  "places": [
+    { "id": "falaises-auri", "name": "Falaises d’Auri", "note": "couloir de migration des oiseaux" },
+    { "id": "anse-bleue", "name": "Anse-Bleue", "note": "petit port de pêche; route des chevaux" },
+    { "id": "plateau-neutre", "name": "Plateau Neutre", "note": "zone ventée, loin des habitats" }
   ],
-  "rappels": [
-    "Rester respectueux",
-    "Écouter les autres",
-    "Poser des questions courtes"
+  "factions": [
+    "Chamanes (pas de mines; éoliennes seulement en zone neutre)",
+    "Liberté & Nature (pas de mines, pas d'éoliennes près des paysages)",
+    "Creuser-Puiser (pro mines + éoliennes; emplois)",
+    "Pêche & Chevaux (prudence : routes de pêche, caravanes)"
   ],
-  "notes": "Les élèves écrivent une 'Ma trace' (1 phrase) à la fin de chaque tour."
+  "constraints": [
+    "couloirs d'oiseaux sur Falaises d’Auri",
+    "nuisances sonores possibles près des hameaux",
+    "routes de pêche à préserver",
+    "paysages emblématiques à protéger"
+  ],
+  "dilemmas": [
+    "L'énergie propre vs. protection des oiseaux",
+    "Emplois locaux vs. tranquillité des villages",
+    "Production régulière vs. jours sans vent (stockage)"
+  ],
+  "factsBank": [
+    "Le vent varie selon les saisons; on peut compléter par d'autres sources d'énergie.",
+    "Choisir un site éloigné des couloirs d'oiseaux limite les collisions.",
+    "Un parc éolien nécessite de l'entretien régulier et une concertation locale."
+  ],
+  "recentEvents": [
+    "Un panneau explicatif installé à l’Anse-Bleue sur les migrations d’automne.",
+    "Le conseil du village a ouvert une consultation publique pour le Plateau Neutre."
+  ],
+  "rappels": ["Rester respectueux", "Écouter les autres", "Poser des questions courtes"]
 }
