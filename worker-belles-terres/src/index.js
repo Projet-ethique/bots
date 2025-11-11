@@ -1,4 +1,4 @@
-// Worker Cloudflare — API bot + logs + mémoire R2
+// worker-belles-terres/src/index.js
 export default {
   async fetch(req, env) {
     const url = new URL(req.url);
@@ -8,7 +8,7 @@ export default {
     if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: cors });
 
     try {
-      // CHAT
+      // ---- Chat ----
       if (url.pathname === "/api/chat" && req.method === "POST") {
         const { messages = [], system = "", model = "gpt-4o-mini", temperature = 0.6 } = await req.json();
         const payload = {
@@ -21,10 +21,7 @@ export default {
         };
         const r = await fetch("https://api.openai.com/v1/chat/completions", {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${env.OPENAI_API_KEY}`
-          },
+          headers: { "Content-Type": "application/json", "Authorization": `Bearer ${env.OPENAI_API_KEY}` },
           body: JSON.stringify(payload)
         });
         if (!r.ok) return json({ error: await r.text() }, 500, cors);
@@ -33,9 +30,9 @@ export default {
         return json({ reply }, 200, cors);
       }
 
-      // SAVE (transcript NDJSON)
+      // ---- Save transcript (NDJSON) ----
       if (url.pathname === "/api/save" && req.method === "POST") {
-        if (!env.LOGS_BUCKET) return json({ error: "Binding R2 LOGS_BUCKET manquant" }, 501, cors);
+        if (!env.LOGS_BUCKET) return json({ error: "R2 binding LOGS_BUCKET manquant" }, 501, cors);
         const { sessionId, transcript, contentType = "application/x-ndjson", classId = "demo", userId = "anon" } = await req.json();
         if (!sessionId || !transcript) return json({ error: "sessionId et transcript requis" }, 400, cors);
         const key = `logs/${classId}/${userId}/${sessionId}.jsonl`;
@@ -43,9 +40,9 @@ export default {
         return json({ ok: true, key }, 200, cors);
       }
 
-      // MEMORY — GET
+      // ---- Memory GET/POST ----
       if (url.pathname === "/api/memory" && req.method === "GET") {
-        if (!env.LOGS_BUCKET) return json({ error: "Binding R2 LOGS_BUCKET manquant" }, 501, cors);
+        if (!env.LOGS_BUCKET) return json({ error: "R2 binding LOGS_BUCKET manquant" }, 501, cors);
         const classId = url.searchParams.get("classId") || "demo";
         const userId  = url.searchParams.get("userId")  || "anon";
         const key = `mem/${classId}/${userId}.json`;
@@ -54,10 +51,8 @@ export default {
         const txt = await obj.text();
         return new Response(txt, { status: 200, headers: cors });
       }
-
-      // MEMORY — POST
       if (url.pathname === "/api/memory" && req.method === "POST") {
-        if (!env.LOGS_BUCKET) return json({ error: "Binding R2 LOGS_BUCKET manquant" }, 501, cors);
+        if (!env.LOGS_BUCKET) return json({ error: "R2 binding LOGS_BUCKET manquant" }, 501, cors);
         const { classId = "demo", userId = "anon", memory } = await req.json();
         if (!memory) return json({ error: "memory requis" }, 400, cors);
         const key = `mem/${classId}/${userId}.json`;
@@ -65,9 +60,7 @@ export default {
         return json({ ok:true, key }, 200, cors);
       }
 
-      if (url.pathname === "/" && req.method === "GET") {
-        return new Response("OK", { headers: cors });
-      }
+      if (url.pathname === "/" && req.method === "GET") return new Response("OK", { headers: cors });
       return json({ error: "Not found" }, 404, cors);
     } catch (e) {
       return json({ error: String(e) }, 500, cors);
