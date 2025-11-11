@@ -1,31 +1,19 @@
 // assets/app.js
-import { API_URL } from "./config.js";
+import { API_BASE } from "./config.js";
+import { makeSystem } from "./prompt.js";
 
-const chatEl = document.getElementById("chat");
-const inputEl = document.getElementById("input");
-const sendBtn = document.getElementById("send");
-const saveBtn = document.getElementById("save");
+const chatEl   = document.getElementById("chat");
+const inputEl  = document.getElementById("input");
+const sendBtn  = document.getElementById("send");
+const saveBtn  = document.getElementById("save");
 const personaSel = document.getElementById("persona");
-const worldEl = document.getElementById("world");
+const worldTa  = document.getElementById("world");
 const modelSel = document.getElementById("model");
-const tts = document.getElementById("tts");
+const ttsChk   = document.getElementById("tts");
 
-const PERSONAS = {
-  elyo: { name:"Élyo", bio:"apprenti technicien des éoliennes, curieux et calme (pro-éolien, attentif aux oiseaux et au paysage)" },
-  nae:  { name:"Naé",  bio:"apprentie chamane des Belles-Terres (protège les terres sacrées, ouverte aux éoliennes en zones neutres)" },
-  mika: { name:"Mika", bio:"employé·e local·e de Creuser-Puiser (emplois, mines et éoliennes locales, veut des garanties environnementales)" },
-  lia:  { name:"Lia",  bio:"militante Liberté & Nature (préserver les biotopes, pro-écotourisme, contre mines et éoliennes)" },
-  teo:  { name:"Téo",  bio:"pêche & chevaux tradition (prudent avec tourisme de masse et éoliennes)" },
-};
-
-const DEFAULT_WORLD = {
-  lieu: "Forum de parole de la Côte-Nord (vents forts)",
-  enjeux: ["mines de terres rares (néodyme)", "parcs éoliens côtiers", "écotourisme"],
-  rappel: "Rester respectueux, écouter, poser des questions courtes.",
-  note: "Les élèves écrivent une 'Ma trace' en 1 phrase à la fin de chaque tour."
-};
-
-let history = []; // { role: "user"|"assistant", content: "..." }
+let PERSONAS = {};
+let DEFAULT_WORLD = {};
+let history = []; // { role:"user"|"assistant", content:"..." }
 
 function addMsg(role, text) {
   const div = document.createElement("div");
@@ -34,15 +22,30 @@ function addMsg(role, text) {
   chatEl.appendChild(div);
   chatEl.scrollTop = chatEl.scrollHeight;
 
-  if (role === "assistant" && tts?.checked && "speechSynthesis" in window) {
+  if (role === "assistant" && ttsChk?.checked && "speechSynthesis" in window) {
     const u = new SpeechSynthesisUtterance(text.replace(/👍|ℹ️|❓|✍️/g,""));
     u.lang = "fr-CH";
     window.speechSynthesis.cancel();
     window.speechSynthesis.speak(u);
   }
-
-  // sauvegarde locale (optionnelle)
   localStorage.setItem("bt_demo_history", JSON.stringify(history));
+}
+
+async function loadData() {
+  const p = await fetch("./data/personas.json").then(r => r.json());
+  PERSONAS = Object.fromEntries(p.map(x => [x.id, { name: x.name, bio: x.bio }]));
+  personaSel.innerHTML = p.map(x => `<option value="${x.id}">${x.name}</option>`).join("");
+
+  DEFAULT_WORLD = await fetch("./data/world.json").then(r => r.json());
+  worldTa.value = JSON.stringify(DEFAULT_WORLD, null, 2);
+
+  try {
+    const prev = JSON.parse(localStorage.getItem("bt_demo_history") || "[]");
+    if (prev.length) {
+      history = prev;
+      for (const m of prev) addMsg(m.role, m.content);
+    }
+  } catch {}
 }
 
 async function sendMsg() {
@@ -53,15 +56,17 @@ async function sendMsg() {
   addMsg("user", content);
   inputEl.value = "";
 
-  const persona = PERSONAS[personaSel.value];
+  const pid = personaSel.value;
+  const persona = PERSONAS[pid] || PERSONAS[Object.keys(PERSONAS)[0]];
   let world;
-  try { world = JSON.parse(worldEl.value || "{}"); }
-  catch { world = DEFAULT_WORLD; }
+  try { world = JSON.parse(worldTa.value || "{}"); } catch { world = DEFAULT_WORLD; }
+  const system = makeSystem(persona, world);
+  const model  = modelSel?.value || "gpt-4o-mini";
 
-  const r = await fetch(`${API_URL}/chat`, {
+  const r = await fetch(`${API_BASE}/chat`, {
     method: "POST",
-    headers: {"Content-Type":"application/json"},
-    body: JSON.stringify({ messages: history, persona, world, model: modelSel?.value || "gpt-4o-mini" })
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ messages: history, system, model })
   });
   const data = await r.json();
   const reply = data.reply || "(pas de réponse)";
@@ -70,29 +75,16 @@ async function sendMsg() {
 }
 
 async function saveTranscript() {
-  const sessionId = crypto.randomUUID();
-  // NDJSON : 1 message par ligne, avec timestamp
+  const sessionId  = crypto.randomUUID();
   const transcript = history.map(m => JSON.stringify({ ts: Date.now(), ...m })).join("\n");
-  await fetch(`${API_URL}/save`, {
+  await fetch(`${API_BASE}/save`, {
     method: "POST",
-    headers: {"Content-Type":"application/json"},
+    headers: { "Content-Type":"application/json" },
     body: JSON.stringify({ sessionId, transcript, contentType:"application/x-ndjson" })
   });
   alert("Session enregistrée (R2).");
 }
 
-// UI hooks
+document.addEventListener("DOMContentLoaded", loadData);
 sendBtn.onclick = sendMsg;
 saveBtn.onclick = saveTranscript;
-
-// init
-document.addEventListener("DOMContentLoaded", () => {
-  worldEl.value = JSON.stringify(DEFAULT_WORLD, null, 2);
-  try {
-    const prev = JSON.parse(localStorage.getItem("bt_demo_history") || "[]");
-    if (prev.length) {
-      history = prev;
-      for (const m of prev) addMsg(m.role === "user" ? "user" : "assistant", m.content);
-    }
-  } catch {}
-});
