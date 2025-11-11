@@ -2,9 +2,7 @@
 import { API_BASE } from "./config.js";
 import { makeSystem } from "./prompt.js";
 
-/* ============================================================
-   UI ELEMENTS
-   ============================================================ */
+/* ============ UI ============ */
 const chatEl     = document.getElementById("chat");
 const inputEl    = document.getElementById("input");
 const sendBtn    = document.getElementById("send");
@@ -15,21 +13,18 @@ const worldTa    = document.getElementById("world");
 const modelSel   = document.getElementById("model");
 const ttsChk     = document.getElementById("tts");
 
-// Optionnel : si tu ajoutes plus tard <input id="classId"> et <input id="userId">
-// on les détecte, sinon on prend des valeurs par défaut.
+/* Optionnel si tu ajoutes plus tard : <input id="classId"> <input id="userId"> */
 const classInput = document.getElementById("classId");
 const userInput  = document.getElementById("userId");
 
-/* ============================================================
-   ETAT APP
-   ============================================================ */
+/* ============ Etat ============ */
 let PERSONAS = {};
 let DEFAULT_WORLD = {};
-let history = [];                        // [{role:"user"|"assistant", content:string}]
-let sessionId = crypto.randomUUID();     // un identifiant par “séance”
-let MEMORY = { summary: "", notes: [] }; // mémoire légère côté élève
+let history = [];                         // [{role, content}]
+let sessionId = crypto.randomUUID();
+let MEMORY = { summary: "", notes: [] };  // mémoire locale (résumé+notes)
 
-// Identité classe/élève (persistée localement)
+/* ============ Identité classe/élève ============ */
 function getClassId() {
   return (classInput?.value?.trim())
       || localStorage.getItem("bt_class")
@@ -47,68 +42,49 @@ function persistIds() {
   if (uid) localStorage.setItem("bt_user",  uid);
 }
 
-/* ============================================================
-   TTS OPTION B : PIPER DANS LE NAVIGATEUR (WASM via ONNX)
-   - aucune API externe payante par génération
-   - modèles mis en cache dans l’OPFS du navigateur
-   Sources:
-     - Piper TTS Web (lib)  :contentReference[oaicite:0]{index=0}
-     - ONNX Runtime Web     :contentReference[oaicite:1]{index=1}
-   ============================================================ */
-const USE_PIPER = true; // ON par défaut
-let ttsLib = null;      // module @mintplex-labs/piper-tts-web
-let ttsReady = false;
-let TTS_VOICE_CACHE = {}; // { personaId : voiceId }
+/* ============ TTS Piper (WASM) + préchargement ============ */
+// Lib
+const USE_PIPER = true;      // activer/désactiver Piper
+let ttsLib = null;           // module @mintplex-labs/piper-tts-web
+let TTS_VOICE_CACHE = {};    // { personaId : voiceId }
 
 async function ensurePiperLoaded() {
   if (!USE_PIPER) return false;
   if (ttsLib) return true;
-
-  // Import ESM via CDN (aucun bundler requis sur GitHub Pages)
-  // La lib charge ORT Web en interne et met les modèles en cache (OPFS).
-  // Remarque : 1er chargement d’un modèle = téléchargement (quelques dizaines de Mo).
   ttsLib = await import("https://cdn.jsdelivr.net/npm/@mintplex-labs/piper-tts-web/dist/index.min.js");
-  // Pour accélérer : tu peux pré-télécharger une voix FR avec ttsLib.download(voiceId, cb)
-  ttsReady = true;
   return true;
 }
 
-async function getFrenchVoiceIdForPersona(personaId, prefer) {
-  // 1) persona peut préciser une voix Piper (ex: "fr_FR-mls-medium")
-  const persona = PERSONAS[personaId];
-  if (persona?.piperVoice) return persona.piperVoice;
+async function listVoices() {
+  await ensurePiperLoaded();
+  return await ttsLib.voices(); // { voiceId: {language, ...}, ...}
+}
 
-  // 2) sinon on choisit la 1re voix française disponible
-  const voices = await ttsLib.voices(); // renvoie la liste des voix supportées
-  // Heuristique: prendre celle qui commence par "fr_" ou contient "fr"
-  const frEntry = Object.entries(voices).find(([key, meta]) =>
-    key.toLowerCase().startsWith("fr_") ||
+async function pickVoiceForPersona(pid) {
+  // persona.piperVoice prioritaire, sinon première FR disponible
+  const persona = PERSONAS[pid];
+  await ensurePiperLoaded();
+  const all = await ttsLib.voices();
+  if (persona?.piperVoice && all[persona.piperVoice]) return persona.piperVoice;
+  const entry = Object.entries(all).find(([id, meta]) =>
     (meta?.language || "").toLowerCase().startsWith("fr")
   );
-  if (frEntry) return frEntry[0];
-
-  // 3) fallback global (s’il n’y a pas de voix FR dans la lib utilisée)
-  const any = Object.keys(voices)[0];
-  return any;
+  return entry ? entry[0] : Object.keys(all)[0];
 }
 
 async function speakWithPiper(text) {
   if (!ttsChk?.checked) return;
   try {
-    if (!await ensurePiperLoaded()) return;
+    await ensurePiperLoaded();
     const pid = personaSel.value || Object.keys(PERSONAS)[0];
-    const cached = TTS_VOICE_CACHE[pid];
-    const voiceId = cached || (TTS_VOICE_CACHE[pid] = await getFrenchVoiceIdForPersona(pid));
-    // 1er usage : télécharge et met en cache le modèle (OPFS)
-    await ttsLib.download(voiceId);
-    // Synthèse → Blob WAV
-    const wavBlob = await ttsLib.predict({ text, voiceId });
-    const audio = new Audio();
-    audio.src = URL.createObjectURL(wavBlob);
-    audio.play();
+    const voiceId = TTS_VOICE_CACHE[pid] || (TTS_VOICE_CACHE[pid] = await pickVoiceForPersona(pid));
+    // Télécharge en cache si nécessaire
+    await ttsLib.download(voiceId, (p) => updateBootProgress(`Téléchargement voix ${voiceId}… ${Math.round(p*100)}%`));
+    const wav = await ttsLib.predict({ text, voiceId });
+    const audio = new Audio(URL.createObjectURL(wav));
+    await audio.play();
   } catch (e) {
     console.warn("Piper TTS error, fallback WebSpeech:", e);
-    // Fallback gratuit: Web Speech (voix système)  :contentReference[oaicite:2]{index=2}
     if ("speechSynthesis" in window) {
       const u = new SpeechSynthesisUtterance(text);
       u.lang = "fr-FR";
@@ -117,20 +93,48 @@ async function speakWithPiper(text) {
   }
 }
 
-/* ============================================================
-   CHARGEMENT DES DONNÉES (personas & monde)
-   - Les options de la liste affichent "Prénom — Groupe"
-   - Modèles : 5 entrées (4o-mini, 4o, 5, 4.1, 3.5-turbo)
-   ============================================================ */
+/* ============ Préchargement : overlay + progression ============ */
+const bootEl = document.getElementById("boot");        // <div id="boot"><div id="boot-msg"></div><div id="boot-bar"></div></div>
+const bootMsgEl = document.getElementById("boot-msg");
+const bootBarEl = document.getElementById("boot-bar");
+
+function showBoot(msg) {
+  if (!bootEl) return;
+  bootEl.style.display = "grid";
+  updateBootProgress(msg || "Préparation de la salle…");
+}
+function hideBoot() { if (bootEl) bootEl.style.display = "none"; }
+function updateBootProgress(msg, pct) {
+  if (bootMsgEl && msg) bootMsgEl.textContent = msg;
+  if (bootBarEl && typeof pct === "number") bootBarEl.style.setProperty("--p", `${pct}%`);
+}
+
+async function preloadVoices() {
+  if (!USE_PIPER) return;
+  await ensurePiperLoaded();
+  const personaIds = Object.keys(PERSONAS);
+  for (let i = 0; i < personaIds.length; i++) {
+    const pid = personaIds[i];
+    const v = await pickVoiceForPersona(pid);
+    TTS_VOICE_CACHE[pid] = v;
+    updateBootProgress(`(${i+1}/${personaIds.length}) ${PERSONAS[pid].name} installe les chaises…`, Math.round(((i+1)/personaIds.length)*100));
+    try { await ttsLib.download(v); } catch {}
+  }
+}
+
+/* ============ Modèles (avec fallback) ============ */
 const MODEL_LIST = [
-  { id: "gpt-4o-mini", label: "gpt-4o-mini (recommandé)" },
-  { id: "gpt-4o",      label: "gpt-4o" },
-  { id: "gpt-5",       label: "gpt-5 (si accès)" },
-  { id: "gpt-4.1",     label: "gpt-4.1" },
+  { id: "gpt-4o-mini",   label: "gpt-4o-mini (recommandé)" },
+  { id: "gpt-4o",        label: "gpt-4o" },
+  { id: "gpt-4.1",       label: "gpt-4.1" },      // dispo selon compte
+  { id: "gpt-5",         label: "gpt-5 (si accès)" }, // peut ne pas être dispo
   { id: "gpt-3.5-turbo", label: "gpt-3.5-turbo (ancien)" }
 ];
 
+/* ============ Chargement données ============ */
 async function loadData() {
+  showBoot("Le forum s’éveille…");
+
   // PERSONAS
   const list = await fetch("./data/personas.json").then(r => r.json());
   PERSONAS = Object.fromEntries(list.map(x => [x.id, x]));
@@ -146,7 +150,7 @@ async function loadData() {
   DEFAULT_WORLD = await fetch("./data/world.json").then(r => r.json());
   worldTa.value = JSON.stringify(DEFAULT_WORLD, null, 2);
 
-  // HISTORIQUE (local, pour l’onglet)
+  // HISTORIQUE (onglet)
   try {
     const prev = JSON.parse(localStorage.getItem("bt_demo_history") || "[]");
     if (prev.length) {
@@ -155,32 +159,27 @@ async function loadData() {
     }
   } catch {}
 
-  // MÉMOIRE : on charge la mémoire R2 de la classe/élève si existante
+  // MÉMOIRE (R2)
   await loadMemory();
+
+  // Pré-charger voix (barre + messages immersifs)
+  updateBootProgress("Les chaises se placent…", 10);
+  await preloadVoices();
+  hideBoot();
+
   inputEl?.focus();
 }
 
 function escapeHtml(s){ return (s||"").replace(/[&<>"']/g, c=>({ "&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c])); }
 
-/* ============================================================
-   MÉMOIRE PAR CLASSE/ÉLÈVE (simple et robuste)
-   - GET /api/memory?classId=...&userId=...
-   - POST /api/memory { classId, userId, personaId, memory }
-   (voir plus bas le petit ajout Worker)
-   ============================================================ */
+/* ============ Mémoire classe/élève simple (R2) ============ */
 async function loadMemory() {
   try {
     const cid = getClassId(); const uid = getUserId();
     const url = `${API_BASE}/memory?classId=${encodeURIComponent(cid)}&userId=${encodeURIComponent(uid)}`;
     const r = await fetch(url);
-    if (r.ok) {
-      MEMORY = await r.json();
-    } else {
-      MEMORY = { summary: "", notes: [] };
-    }
-  } catch {
-    MEMORY = { summary: "", notes: [] };
-  }
+    MEMORY = r.ok ? await r.json() : { summary:"", notes:[] };
+  } catch { MEMORY = { summary:"", notes:[] }; }
 }
 async function saveMemory() {
   const cid = getClassId(); const uid = getUserId();
@@ -191,23 +190,16 @@ async function saveMemory() {
     body: JSON.stringify({ classId: cid, userId: uid, personaId: pid, memory: MEMORY })
   });
 }
-
-// Mise à jour très légère de la mémoire après chaque échange
 function updateMemory(userText, botText) {
-  // notes "à plat", 1 ligne par prise de parole, max 30
   const now = new Date().toISOString();
   MEMORY.notes.push({ t: now, u: userText, a: botText });
   if (MEMORY.notes.length > 30) MEMORY.notes.splice(0, MEMORY.notes.length - 30);
-
-  // mini résumé naïf (sans coût d’API) : on garde la dernière ligne “but / point clé”
   const last = botText.split(/[.!?]/).find(s => s.trim().length > 8) || botText;
   MEMORY.summary = (MEMORY.summary ? MEMORY.summary + " " : "") + last.trim();
-  if (MEMORY.summary.length > 600) MEMORY.summary = MEMORY.summary.slice(-600); // borne simple
+  if (MEMORY.summary.length > 800) MEMORY.summary = MEMORY.summary.slice(-800);
 }
 
-/* ============================================================
-   AFFICHAGE & ENVOI
-   ============================================================ */
+/* ============ Affichage & actions ============ */
 function addMsg(role, text) {
   const div = document.createElement("div");
   div.className = "card msg " + (role === "user" ? "user" : "bot");
@@ -216,16 +208,12 @@ function addMsg(role, text) {
   chatEl.scrollTop = chatEl.scrollHeight;
 
   if (role === "assistant") {
-    // TTS Piper (ou fallback WebSpeech)
     speakWithPiper(text);
   }
   localStorage.setItem("bt_demo_history", JSON.stringify(history));
 }
 
-personaSel?.addEventListener("change", () => {
-  // immersion : reset conversation si on change de persona
-  resetConversation();
-});
+personaSel?.addEventListener("change", () => resetConversation());
 
 function resetConversation() {
   if ("speechSynthesis" in window) window.speechSynthesis.cancel();
@@ -253,7 +241,7 @@ async function sendMsg() {
   let world;
   try { world = JSON.parse(worldTa.value || "{}"); } catch { world = DEFAULT_WORLD; }
 
-  // On injecte aussi la MEMORY côté system pour “connaître la partie”
+  // injecte la mémoire et les “farewells” dans le contexte
   const system = makeSystem(persona, { ...world, memory: MEMORY });
   const chosenModel = modelSel?.value || "gpt-4o-mini";
 
@@ -268,8 +256,7 @@ async function sendMsg() {
     if (!r.ok || data.error) throw new Error(data.error || "API error");
     reply = data.reply || reply;
   } catch (e) {
-    // Fallback si le modèle choisi n’est pas accessible → on retente avec 4o-mini
-    console.warn("Chat error, retry on gpt-4o-mini:", e);
+    // repli sur 4o-mini si le modèle n’est pas accessible
     try {
       const r2 = await fetch(`${API_BASE}/chat`, {
         method: "POST",
@@ -278,19 +265,17 @@ async function sendMsg() {
       });
       const d2 = await r2.json();
       reply = d2.reply || reply;
-    } catch { /* on garde le reply par défaut */ }
+    } catch {}
   }
 
   history.push({ role:"assistant", content: reply });
   addMsg("assistant", reply);
 
-  // mémoire (locale & R2)
   updateMemory(content, reply);
-  saveMemory(); // asynchrone, pas bloquant
+  saveMemory();
 }
 
 async function saveTranscript() {
-  // NDJSON (1 ligne = 1 message)
   const transcript = history.map(m => JSON.stringify({ ts: Date.now(), ...m })).join("\n");
   await fetch(`${API_BASE}/save`, {
     method: "POST",
@@ -306,26 +291,11 @@ async function saveTranscript() {
   alert("Session enregistrée (R2).");
 }
 
-/* ============================================================
-   BOOT
-   ============================================================ */
-document.addEventListener("DOMContentLoaded", async () => {
-  await loadData();
-  // Optionnel : précharge Piper si la case est cochée
-  if (ttsChk?.checked) ensurePiperLoaded();
-
-  // Fix visuels (certains thèmes rendent les <option> illisibles)
-  try {
-    // Les options ne sont pas toujours stylables, mais on force les selects lisibles:
-    if (modelSel)   modelSel.style.color = "inherit";
-    if (personaSel) personaSel.style.color = "inherit";
-  } catch {}
-});
+/* ============ Boot ============ */
+document.addEventListener("DOMContentLoaded", loadData);
 sendBtn.onclick  = sendMsg;
 saveBtn.onclick  = saveTranscript;
 resetBtn && (resetBtn.onclick = resetConversation);
-
-// Entrée = envoyer
 inputEl?.addEventListener("keydown", (e) => {
   if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMsg(); }
 });
