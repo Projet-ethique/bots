@@ -2,10 +2,7 @@
 <html lang="fr">
 <head>
   <meta charset="utf-8" />
-  <meta
-    name="viewport"
-    content="width=device-width,initial-scale=1,maximum-scale=1"
-  />
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1" />
   <title>Belles-Terres — Débat IA (maquette)</title>
   <meta name="description" content="Maquette bot-débat Belles-Terres (éoliennes/énergies)">
   <style>
@@ -47,8 +44,11 @@
         </label>
         <label>Modèle:
           <select id="model">
-            <option value="gpt-4o-mini">gpt-4o-mini (reco)</option>
-            <option value="gpt-4o-mini-translate">gpt-4o-mini-translate</option>
+            <option value="gpt-4o-mini">gpt-4o-mini (recommandé)</option>
+            <option value="gpt-4o">gpt-4o</option>
+            <option value="gpt-4.1">gpt-4.1</option>
+            <option value="gpt-5">gpt-5</option>
+            <option value="gpt-3.5-turbo">gpt-3.5-turbo (ancien)</option>
           </select>
         </label>
         <label class="row" style="gap:6px;">
@@ -75,40 +75,30 @@
       <h3 style="margin-top:0">Monde (éditable pour test)</h3>
       <textarea id="world" spellcheck="false"></textarea>
       <p class="muted">
-        Personas : <code>./data/personas.json</code> — Monde : <code>./data/world.json</code>.
+        Personas : <code>./data/personas.json</code> — Monde : <code>./data/world.json</code>.<br>
         Les règles d’immersion sont dans <code>./assets/prompt.js</code>.
       </p>
       <details>
         <summary>Conseils</summary>
         <ul>
           <li>Changer de persona réinitialise la conversation (immersion).</li>
-          <li>“Voix” utilise la synthèse intégrée du navigateur. Voir plus bas pour des voix dédiées.</li>
+          <li>“Voix” utilise la synthèse intégrée du navigateur ou Piper si activé.</li>
         </ul>
       </details>
     </aside>
   </main>
-<!-- Overlay de boot (préchargement immersif) -->
-<div id="boot" style="position:fixed;inset:0;display:none;place-items:center;background:color-mix(in srgb, Canvas, CanvasText 5%);z-index:9999">
-  <div style="width:min(520px,92vw);padding:16px;border:1px solid #ccc4;border-radius:12px;background:Canvas;color:CanvasText;box-shadow:0 10px 30px #0003;">
-    <div id="boot-msg" style="margin-bottom:10px">Le forum s’éveille…</div>
-    <div id="boot-bar" style="height:8px;background:#0001;border-radius:8px;overflow:hidden">
-      <div style="height:100%;width:var(--p,0%);background:#0b5bf5"></div>
-    </div>
-  </div>
-</div>
 
-<script type="module" src="./assets/app.js?v=4"></script>
-
-  <!-- Scripts (ES modules) -->
-  <script type="module" src="./assets/app.js?v=3"></script>
+  <!-- Overlay de boot (préchargement immersif) -->
   <div id="boot" style="position:fixed;inset:0;display:none;place-items:center;background:color-mix(in srgb, Canvas, CanvasText 5%);z-index:9999">
-  <div style="width:min(480px,90vw);padding:16px;border:1px solid #ccc4;border-radius:12px;background:Canvas;color:CanvasText;box-shadow:0 10px 30px #0003;">
-    <div id="boot-msg" style="margin-bottom:10px">Préparation…</div>
-    <div id="boot-bar" style="height:8px;background:#0001;border-radius:8px;overflow:hidden">
-      <div style="height:100%;width:var(--p,0%);background:#0b5bf5"></div>
+    <div style="width:min(520px,92vw);padding:16px;border:1px solid #ccc4;border-radius:12px;background:Canvas;color:CanvasText;box-shadow:0 10px 30px #0003;">
+      <div id="boot-msg" style="margin-bottom:10px">Le forum s’éveille…</div>
+      <div id="boot-bar" style="height:8px;background:#0001;border-radius:8px;overflow:hidden">
+        <div style="height:100%;width:var(--p,0%);background:#0b5bf5"></div>
+      </div>
     </div>
   </div>
-</div>
 
+  <!-- Script unique -->
+  <script type="module" src="./assets/app.js?v=5"></script>
 </body>
 </html>
