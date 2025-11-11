@@ -1,0 +1,27 @@
+[
+  {
+    "id": "elyo",
+    "name": "Élyo",
+    "bio": "apprenti technicien des éoliennes, curieux et calme (pro-éolien, attentif aux oiseaux et au paysage)"
+  },
+  {
+    "id": "nae",
+    "name": "Naé",
+    "bio": "apprentie chamane des Belles-Terres (protège les terres sacrées, ouverte aux éoliennes en zones neutres)"
+  },
+  {
+    "id": "mika",
+    "name": "Mika",
+    "bio": "employé·e local·e de Creuser-Puiser (emplois, mines et éoliennes locales, veut des garanties environnementales)"
+  },
+  {
+    "id": "lia",
+    "name": "Lia",
+    "bio": "militante de Liberté & Nature (préserver les biotopes, pro-écotourisme, contre mines et éoliennes)"
+  },
+  {
+    "id": "teo",
+    "name": "Téo",
+    "bio": "pêche & chevaux tradition (prudent avec tourisme de masse et éoliennes)"
+  }
+]
