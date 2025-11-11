@@ -6,6 +6,7 @@ const chatEl     = document.getElementById("chat");
 const inputEl    = document.getElementById("input");
 const sendBtn    = document.getElementById("send");
 const saveBtn    = document.getElementById("save");
+const resetBtn   = document.getElementById("reset");
 const personaSel = document.getElementById("persona");
 const worldTa    = document.getElementById("world");
 const modelSel   = document.getElementById("model");
@@ -13,7 +14,8 @@ const ttsChk     = document.getElementById("tts");
 
 let PERSONAS = {};
 let DEFAULT_WORLD = {};
-let history = []; // [{role:"user"|"assistant", content:string}]
+let history = [];                 // [{ role:"user"|"assistant", content:string }]
+let sessionId = crypto.randomUUID(); // un identifiant par “séance” (réinitialisé sur reset)
 
 function addMsg(role, text) {
   const div = document.createElement("div");
@@ -32,14 +34,16 @@ function addMsg(role, text) {
 }
 
 async function loadData() {
-  // charge le JSON complet et conserve tous les champs du persona
+  // charge les personas (garde l’objet complet, pour tics/questioning/etc.)
   const list = await fetch("./data/personas.json").then(r => r.json());
   PERSONAS = Object.fromEntries(list.map(x => [x.id, x]));
   personaSel.innerHTML = list.map(x => `<option value="${x.id}">${x.name}</option>`).join("");
 
+  // charge le monde par défaut
   DEFAULT_WORLD = await fetch("./data/world.json").then(r => r.json());
   worldTa.value = JSON.stringify(DEFAULT_WORLD, null, 2);
 
+  // restaure l'historique local si présent
   try {
     const prev = JSON.parse(localStorage.getItem("bt_demo_history") || "[]");
     if (prev.length) {
@@ -47,14 +51,34 @@ async function loadData() {
       for (const m of prev) addMsg(m.role, m.content);
     }
   } catch {}
+
+  inputEl?.focus();
 }
 
 personaSel.onchange = () => {
-  // pour l'immersion : redémarre la conversation quand on change de persona
+  // Pour l’immersion, on redémarre la session quand on change de personnage
+  resetConversation();
+};
+
+function resetConversation() {
+  // Stoppe toute voix en cours
+  if ("speechSynthesis" in window) window.speechSynthesis.cancel();
+
+  // Vide historique + UI + stockage local
   history = [];
   chatEl.innerHTML = "";
   localStorage.removeItem("bt_demo_history");
-};
+
+  // Nouveau sessionId
+  sessionId = crypto.randomUUID();
+
+  // Remet le monde par défaut (si tu veux conserver les edits prof, commente la ligne suivante)
+  worldTa.value = JSON.stringify(DEFAULT_WORLD, null, 2);
+
+  // Nettoie l’input et remet le focus
+  inputEl.value = "";
+  inputEl.focus();
+}
 
 async function sendMsg() {
   const content = inputEl.value.trim();
@@ -84,8 +108,8 @@ async function sendMsg() {
 }
 
 async function saveTranscript() {
-  const sessionId  = crypto.randomUUID();
-  const transcript = history.map(m => JSON.stringify({ ts: Date.now(), ...m })).join("\n"); // NDJSON
+  // NDJSON (1 ligne = 1 message)
+  const transcript = history.map(m => JSON.stringify({ ts: Date.now(), ...m })).join("\n");
   await fetch(`${API_BASE}/save`, {
     method: "POST",
     headers: { "Content-Type":"application/json" },
@@ -95,5 +119,6 @@ async function saveTranscript() {
 }
 
 document.addEventListener("DOMContentLoaded", loadData);
-sendBtn.onclick = sendMsg;
-saveBtn.onclick = saveTranscript;
+sendBtn.onclick  = sendMsg;
+saveBtn.onclick  = saveTranscript;
+resetBtn.onclick = resetConversation;
