@@ -1,68 +1,93 @@
 <!doctype html>
 <html lang="fr">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Forum — Belles-Terres (démo bot)</title>
-<style>
-body{font:16px/1.5 system-ui,Segoe UI,Arial;margin:0;background:#0b0b0c;color:#f3f3f3}
-header,footer{padding:12px 16px;background:#121214}
-main{max-width:860px;margin:0 auto;padding:12px 16px}
-.card{background:#18181b;border:1px solid #2a2a2e;border-radius:12px;padding:12px 14px;margin:10px 0}
-.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
-label{opacity:.9}
-select,textarea,input,button{border-radius:10px;border:1px solid #2a2a2e;background:#101014;color:#f3f3f3}
-textarea{width:100%;min-height:70px;padding:10px}
-input,select{padding:8px}
-button{padding:10px 14px;cursor:pointer}
-.msg{white-space:pre-wrap}
-.user{border-left:4px solid #4ea1ff;padding-left:10px}
-.bot{border-left:4px solid #7ee787;padding-left:10px}
-small{opacity:.75}
-.tools{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
-</style>
+  <meta charset="utf-8" />
+  <meta
+    name="viewport"
+    content="width=device-width,initial-scale=1,maximum-scale=1"
+  />
+  <title>Belles-Terres — Débat IA (maquette)</title>
+  <meta name="description" content="Maquette bot-débat Belles-Terres (éoliennes/énergies)">
+  <style>
+    :root { color-scheme: light dark; }
+    body { margin:0; font-family: system-ui, Segoe UI, Roboto, Arial, sans-serif; }
+    header { padding: 12px 16px; border-bottom: 1px solid #ccc4; display:flex; align-items:center; gap:12px; }
+    header h1 { font-size: 18px; margin:0; }
+    main { display:grid; grid-template-columns: 1.2fr 0.8fr; gap:16px; padding:16px; }
+    @media (max-width: 900px) { main { grid-template-columns: 1fr; } }
+    .panel { border:1px solid #ccc4; border-radius:12px; padding:12px; background:#fff0; }
+    .row { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+    label { font-size: 14px; opacity:.9; }
+    select, textarea, input[type="text"] { width:100%; padding:8px; border-radius:8px; border:1px solid #9995; background:#fff0; color:inherit; }
+    textarea { min-height: 180px; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px; }
+    .chat { height: 52vh; min-height: 320px; overflow:auto; display:flex; flex-direction:column; gap:8px; padding:8px; border:1px solid #ccc4; border-radius:12px; background: #0000; }
+    .msg { padding:10px 12px; border-radius:10px; white-space:pre-wrap; line-height:1.35; }
+    .msg.user { align-self:flex-end; background:#0b5bf533; border:1px solid #0b5bf555; }
+    .msg.bot  { align-self:flex-start; background:#14a14a33; border:1px solid #14a14a55; }
+    .controls { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+    .controls > * { flex: none; }
+    button { padding:10px 12px; border-radius:10px; border:1px solid #6665; background:#fff0; cursor:pointer; }
+    button:hover { background:#6661; }
+    .muted { opacity:.7; font-size:12px; }
+  </style>
 </head>
 <body>
-<header><h1>Forum des Belles-Terres — Démo bot en personnage</h1></header>
+  <header>
+    <h1>⚡ Belles-Terres — bot de relance (maquette)</h1>
+    <span class="muted">Démo plénum/groupes — personas & monde éditables</span>
+  </header>
 
-<main>
-  <div class="card">
-    <div class="row">
-      <label>Persona</label>
-      <select id="persona"></select>
+  <main>
+    <!-- Colonne gauche : Chat -->
+    <section class="panel">
+      <div class="row" style="gap:12px; margin-bottom:8px;">
+        <label>Persona:
+          <select id="persona"></select>
+        </label>
+        <label>Modèle:
+          <select id="model">
+            <option value="gpt-4o-mini">gpt-4o-mini (reco)</option>
+            <option value="gpt-4o-mini-translate">gpt-4o-mini-translate</option>
+          </select>
+        </label>
+        <label class="row" style="gap:6px;">
+          <input type="checkbox" id="tts" />
+          <span>Voix (lire les réponses)</span>
+        </label>
+      </div>
 
-      <label>&nbsp;&nbsp;Voix</label>
-      <input type="checkbox" id="tts" />
-      <small>Lire la réponse à voix haute</small>
+      <div id="chat" class="chat" aria-live="polite"></div>
 
-      <label>&nbsp;&nbsp;Modèle</label>
-      <select id="model">
-        <option value="gpt-4o-mini" selected>gpt-4o-mini (recommandé)</option>
-        <option value="gpt-4o">gpt-4o (plénière exigeante)</option>
-      </select>
-    </div>
-    <div style="margin-top:8px">
-      <label>Contexte du monde (éditable)</label>
-      <textarea id="world"></textarea>
-    </div>
-  </div>
-
-  <div id="chat"></div>
-
-  <div class="card">
-    <textarea id="input" placeholder="Écris ton idée… (le bot relance avec 1–2 questions max)"></textarea>
-    <div class="tools" style="justify-content:space-between;margin-top:6px">
-      <div>
+      <div class="row" style="margin-top:8px; align-items:flex-start;">
+        <textarea id="input" placeholder="Propose ton idée, pose une question… (Entrée pour envoyer)"></textarea>
+      </div>
+      <div class="controls" style="margin-top:8px;">
         <button id="send">Envoyer</button>
         <button id="save">Sauvegarder la session</button>
+        <button id="reset">Nouvelle conversation</button>
+        <span class="muted">Les logs NDJSON sont enregistrés côté R2 lors du clic “Sauvegarder”.</span>
       </div>
-      <small>Format bot : 👍 ℹ️ ❓ ✍️ — reste en personnage et bienveillant.</small>
-    </div>
-  </div>
-</main>
+    </section>
 
-<footer><small>Démo éducative (HarmoS 7–11). IA encadrée, prompts enregistrés par session.</small></footer>
+    <!-- Colonne droite : Monde & aide -->
+    <aside class="panel">
+      <h3 style="margin-top:0">Monde (éditable pour test)</h3>
+      <textarea id="world" spellcheck="false"></textarea>
+      <p class="muted">
+        Personas : <code>./data/personas.json</code> — Monde : <code>./data/world.json</code>.
+        Les règles d’immersion sont dans <code>./assets/prompt.js</code>.
+      </p>
+      <details>
+        <summary>Conseils</summary>
+        <ul>
+          <li>Changer de persona réinitialise la conversation (immersion).</li>
+          <li>“Voix” utilise la synthèse intégrée du navigateur. Voir plus bas pour des voix dédiées.</li>
+        </ul>
+      </details>
+    </aside>
+  </main>
 
-<script type="module" src="./assets/app.js?v=2"></script>
+  <!-- Scripts (ES modules) -->
+  <script type="module" src="./assets/app.js?v=3"></script>
 </body>
 </html>
