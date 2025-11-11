@@ -50,7 +50,7 @@ async function loadData() {
 }
 
 personaSel.onchange = () => {
-  // pour l'immersion : on redémarre la conversation quand on change de persona
+  // pour l'immersion : redémarre la conversation quand on change de persona
   history = [];
   chatEl.innerHTML = "";
   localStorage.removeItem("bt_demo_history");
