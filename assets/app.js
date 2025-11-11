@@ -63,25 +63,83 @@ async function pickVoiceForPersona(pid) {
   const entry = Object.entries(all).find(([id, meta]) => (meta?.language || "").toLowerCase().startsWith("fr"));
   return entry ? entry[0] : Object.keys(all)[0];
 }
+// --- AJOUT : helpers non-verbal/SFX (placer au-dessus de speakWithPiper) ---
+const NV_SFX = {
+  grogne: "./assets/sfx/grunt.wav",
+  soupire: "./assets/sfx/sigh.wav",
+  rire: "./assets/sfx/chuckle.wav",
+  hmm: "./assets/sfx/hmm.wav"
+};
+
+// Renvoie { clean: texteSansBalises, sfx: ["grogne","soupire",...] }
+function parseNonVerbalsForTTS(text) {
+  let s = String(text);
+
+  // 1) balises auto-fermantes <nv type="..."/>
+  const sfx = [];
+  s = s.replace(/<nv\b([^>]*?)\/>/gi, (_, attrs) => {
+    const t = /type\s*=\s*["']?([\w-]+)["']?/i.exec(attrs)?.[1]?.toLowerCase();
+    if (t) sfx.push(t);
+    return " … "; // petite pause
+  });
+
+  // 2) balises ouvrantes/fermantes <nv>...</nv>
+  s = s.replace(/<nv\b[^>]*>([\s\S]*?)<\/nv>/gi, (_, inner) => {
+    const t = (inner || "").trim().toLowerCase();
+    if (t) sfx.push(t);
+    return " … ";
+  });
+
+  // 3) vieux patterns à nettoyer (sécurité)
+  s = s.replace(/\b[hH]mpf+[\.\!\?]*/g, " … ");
+  s = s.replace(/\((?:grogne|soupire|soupir|rire|hum|hmm)\)/gi, " … ");
+  s = s.replace(/\*[^*]{0,30}\*/g, " "); // *soupire* → pause
+
+  // Nettoyage espaces
+  s = s.replace(/\s{2,}/g, " ").trim();
+  if (!s) s = "…";
+  return { clean: s, sfx };
+}
+
+function playSfxList(sfxList) {
+  for (const key of sfxList) {
+    const url = NV_SFX[key];
+    if (!url) continue;
+    try {
+      const a = new Audio(url);
+      a.volume = 0.6;
+      a.play();
+    } catch {}
+  }
+}
+
+// --- REMPLACE speakWithPiper existant par ceci ---
 async function speakWithPiper(text) {
   if (!ttsChk?.checked) return;
+
+  // Filtre les non-verbaux et prépare éventuels SFX
+  const { clean, sfx } = parseNonVerbalsForTTS(text);
+
   try {
     await ensurePiperLoaded();
     const pid = personaSel.value || Object.keys(PERSONAS)[0];
     const voiceId = TTS_VOICE_CACHE[pid] || (TTS_VOICE_CACHE[pid] = await pickVoiceForPersona(pid));
     await ttsLib.download(voiceId, (p) => updateBootProgress(null, Math.round(p*100)));
-    const wav = await ttsLib.predict({ text, voiceId });
+    const wav = await ttsLib.predict({ text: clean, voiceId });
     const audio = new Audio(URL.createObjectURL(wav));
+    audio.onplay = () => playSfxList(sfx); // joue les SFX en même temps
     await audio.play();
   } catch (e) {
     console.warn("Piper TTS error, fallback WebSpeech:", e);
     if ("speechSynthesis" in window) {
-      const u = new SpeechSynthesisUtterance(text);
+      const u = new SpeechSynthesisUtterance(clean);
       u.lang = "fr-FR";
       window.speechSynthesis.cancel(); window.speechSynthesis.speak(u);
+      playSfxList(sfx);
     }
   }
 }
+
 
 /* ============ Overlay boot + messages tournants ============ */
 const bootEl = document.getElementById("boot");
@@ -219,6 +277,9 @@ function updateMemory(userText, botText) {
 function addMsg(role, text) {
   const div = document.createElement("div");
   div.className = "card msg " + (role === "user" ? "user" : "bot");
+  const display = text.replace(/<nv\b[^>]*\/>/gi, " ")
+                    .replace(/<nv\b[^>]*>([\s\S]*?)<\/nv>/gi, " ");
+div.textContent = (role === "assistant") ? display : text;
   div.textContent = text;
   chatEl.appendChild(div);
   chatEl.scrollTop = chatEl.scrollHeight;
