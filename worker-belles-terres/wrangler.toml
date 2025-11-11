@@ -1,0 +1,7 @@
+name = "belles-terres-worker"
+main = "src/index.js"
+compatibility_date = "2025-11-11"
+
+[[r2_buckets]]
+binding = "LOGS_BUCKET"     # utilisé dans le code (env.LOGS_BUCKET)
+bucket_name = "bt-logs"     # nom de ton bucket R2
