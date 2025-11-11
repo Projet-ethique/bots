@@ -2,18 +2,18 @@
 import { API_BASE } from "./config.js";
 import { makeSystem } from "./prompt.js";
 
-const chatEl   = document.getElementById("chat");
-const inputEl  = document.getElementById("input");
-const sendBtn  = document.getElementById("send");
-const saveBtn  = document.getElementById("save");
+const chatEl     = document.getElementById("chat");
+const inputEl    = document.getElementById("input");
+const sendBtn    = document.getElementById("send");
+const saveBtn    = document.getElementById("save");
 const personaSel = document.getElementById("persona");
-const worldTa  = document.getElementById("world");
-const modelSel = document.getElementById("model");
-const ttsChk   = document.getElementById("tts");
+const worldTa    = document.getElementById("world");
+const modelSel   = document.getElementById("model");
+const ttsChk     = document.getElementById("tts");
 
 let PERSONAS = {};
 let DEFAULT_WORLD = {};
-let history = []; // { role:"user"|"assistant", content:"..." }
+let history = []; // [{role:"user"|"assistant", content:string}]
 
 function addMsg(role, text) {
   const div = document.createElement("div");
@@ -23,7 +23,7 @@ function addMsg(role, text) {
   chatEl.scrollTop = chatEl.scrollHeight;
 
   if (role === "assistant" && ttsChk?.checked && "speechSynthesis" in window) {
-    const u = new SpeechSynthesisUtterance(text.replace(/👍|ℹ️|❓|✍️/g,""));
+    const u = new SpeechSynthesisUtterance(text);
     u.lang = "fr-CH";
     window.speechSynthesis.cancel();
     window.speechSynthesis.speak(u);
@@ -32,9 +32,10 @@ function addMsg(role, text) {
 }
 
 async function loadData() {
-  const p = await fetch("./data/personas.json").then(r => r.json());
-  PERSONAS = Object.fromEntries(p.map(x => [x.id, { name: x.name, bio: x.bio }]));
-  personaSel.innerHTML = p.map(x => `<option value="${x.id}">${x.name}</option>`).join("");
+  // charge le JSON complet et conserve tous les champs du persona
+  const list = await fetch("./data/personas.json").then(r => r.json());
+  PERSONAS = Object.fromEntries(list.map(x => [x.id, x]));
+  personaSel.innerHTML = list.map(x => `<option value="${x.id}">${x.name}</option>`).join("");
 
   DEFAULT_WORLD = await fetch("./data/world.json").then(r => r.json());
   worldTa.value = JSON.stringify(DEFAULT_WORLD, null, 2);
@@ -48,6 +49,13 @@ async function loadData() {
   } catch {}
 }
 
+personaSel.onchange = () => {
+  // pour l'immersion : on redémarre la conversation quand on change de persona
+  history = [];
+  chatEl.innerHTML = "";
+  localStorage.removeItem("bt_demo_history");
+};
+
 async function sendMsg() {
   const content = inputEl.value.trim();
   if (!content) return;
@@ -60,6 +68,7 @@ async function sendMsg() {
   const persona = PERSONAS[pid] || PERSONAS[Object.keys(PERSONAS)[0]];
   let world;
   try { world = JSON.parse(worldTa.value || "{}"); } catch { world = DEFAULT_WORLD; }
+
   const system = makeSystem(persona, world);
   const model  = modelSel?.value || "gpt-4o-mini";
 
@@ -76,7 +85,7 @@ async function sendMsg() {
 
 async function saveTranscript() {
   const sessionId  = crypto.randomUUID();
-  const transcript = history.map(m => JSON.stringify({ ts: Date.now(), ...m })).join("\n");
+  const transcript = history.map(m => JSON.stringify({ ts: Date.now(), ...m })).join("\n"); // NDJSON
   await fetch(`${API_BASE}/save`, {
     method: "POST",
     headers: { "Content-Type":"application/json" },
