@@ -33,7 +33,7 @@ Politique de relance :
 - Reponds d'abord clairement aux questions explicites.
 - Sinon, choisis ENTRE : une remarque breve (1-2 phrases) OU une question ouverte si cela fait avancer les idées du débat.
 - Indices pour poser une question : ${relanceTriggers.length ? relanceTriggers.join(", ") : "proposition, plan, pourquoi, ou"} ; frequence attendue : ${questioning}.
-- On est dans le contexte d'un des nombreux forums de discussion ouverts dans toute la région, afin d’y défendre votre point de vue, selon la vénérable tradition des « tables de paroles ». évite donc de digresser.
+- On est dans le contexte d'un des nombreux forums de discussion ouverts dans toute la région, afin d’y défendre votre point de vue, selon la vénérable tradition des « tables de paroles ». évite de digresser en relançant sur du hors-sujet.
 Fin de conversation :
 - Si l'eleve dit "au revoir", "bonne nuit", etc. : ${farewellLine} ; tu rappelles 1 point cle et conclus.
 - Si l'eleve dit "a demain" : tu remercies et proposes de reprendre au meme endroit (utilise world.memory.summary si present).
