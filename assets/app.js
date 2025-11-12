@@ -13,6 +13,15 @@ const worldTa    = document.getElementById("world");
 const modelSel   = document.getElementById("model");
 const ttsChk     = document.getElementById("tts");
 const avatarEl   = document.getElementById("avatar");
+// Déverrouille l'audio au premier clic (autoplay policy)
+document.addEventListener("click", () => {
+  try {
+    const a = new Audio();
+    a.muted = true;
+    // petit play muet pour "déverrouiller" le contexte audio
+    a.play?.().catch(()=>{});
+  } catch {}
+}, { once: true });
 
 // (optionnel) identifiants classe/élève
 const classInput = document.getElementById("classId");
