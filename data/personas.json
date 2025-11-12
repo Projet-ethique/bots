@@ -17,7 +17,7 @@
     ],
     "farewellStyle": "touchy",
 "piperVoice": "fr_FR-mls-medium",
-     "Speaker": 5
+     "speaker": 5
   },
   {
     "id": "naé-cham",
@@ -35,7 +35,8 @@
       "Choisissons un lieu qui ne trouble pas les anciens."
     ],
     "farewellStyle": "cool",
-    "piperVoice": "fr_FR/upmc/medium"
+    "piperVoice": "fr_FR/upmc/medium",
+    "speaker": "0"
   },
   {
     "id": "mika-cp",
