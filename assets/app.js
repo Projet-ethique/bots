@@ -12,6 +12,8 @@ const personaSel = document.getElementById("persona");
 const worldTa    = document.getElementById("world");
 const modelSel   = document.getElementById("model");
 const ttsChk     = document.getElementById("tts");
+const avatarEl  = document.getElementById("avatar");
+
 
 // (optionnel) identifiants classe/élève
 const classInput = document.getElementById("classId");
@@ -43,6 +45,20 @@ function escapeHtml(s){ return (s||"").replace(/[&<>"']/g, c=>({ "&":"&amp;","<"
 function normalizeVoiceId(id){
   if (!id) return null;
   return String(id).replace(/[\/\\]/g, "-").replace(/--+/g,"-");
+}
+function personaAvatarUrl(p) {
+  if (p?.avatar) return p.avatar; // chemin explicite depuis personas.json
+  // fallback: assets/avatars/<FirstOrName>_profile.png
+  const base = (p?.firstName || p?.name || "avatar").normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g,'_');
+  return `./assets/avatars/${base}_profile.png`;
+}
+function updateAvatar() {
+  const pid = personaSel.value;
+  const p = PERSONAS[pid] || {};
+  if (!avatarEl) return;
+  const url = personaAvatarUrl(p);
+  avatarEl.src = url;
+  avatarEl.alt = (p.displayName || p.name || pid);
 }
 
 /* ============ TTS local Piper ============ */
