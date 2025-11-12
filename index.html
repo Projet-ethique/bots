@@ -10,8 +10,8 @@
     body { margin:0; font-family: system-ui, Segoe UI, Roboto, Arial, sans-serif; }
     header { padding: 12px 16px; border-bottom: 1px solid #ccc4; display:flex; align-items:center; gap:12px; }
     header h1 { font-size: 18px; margin:0; }
-    main { display:grid; grid-template-columns: 1.2fr 0.8fr; gap:16px; padding:16px; }
-    @media (max-width: 900px) { main { grid-template-columns: 1fr; } }
+    /* ----- Layout: chat en haut, éditeurs en bas ----- */
+    main { display:grid; grid-template-columns: 1fr; gap:16px; padding:16px; }
     .panel { border:1px solid #ccc4; border-radius:12px; padding:12px; background:#fff0; }
     .row { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
     label { font-size: 14px; opacity:.9; }
@@ -27,16 +27,24 @@
     button:hover { background:#6661; }
     .muted { opacity:.7; font-size:12px; }
     select, option { background-color: Canvas; color: CanvasText; }
+
+    /* ----- Panneau à onglets (éditeurs en bas) ----- */
+    .tabs { display:flex; gap:8px; border-bottom:1px solid #ccc4; margin-bottom:8px; flex-wrap:wrap; }
+    .tab-btn { padding:8px 10px; border:1px solid #ccc4; border-bottom:none; border-radius:8px 8px 0 0; cursor:pointer; background:#fff0; }
+    .tab-btn.active { background: color-mix(in srgb, Canvas, CanvasText 4%); }
+    .tab { display:none; }
+    .tab.active { display:block; }
+    .hint { margin-top:6px; }
   </style>
 </head>
 <body>
   <header>
     <h1>⚡ Belles-Terres — bot de relance (maquette)</h1>
-    <span class="muted">Démo plénum/groupes — personas & monde éditables</span>
+    <span class="muted">Démo plénum/groupes — éditeurs en bas (Monde / Personas / Prompt)</span>
   </header>
 
   <main>
-    <!-- Colonne gauche : Chat -->
+    <!-- Zone Chat (haut) -->
     <section class="panel">
       <div class="row" style="gap:12px; margin-bottom:8px;">
         <label>Persona:
@@ -70,22 +78,38 @@
       </div>
     </section>
 
-    <!-- Colonne droite : Monde & aide -->
-    <aside class="panel">
-      <h3 style="margin-top:0">Monde (éditable pour test)</h3>
-      <textarea id="world" spellcheck="false"></textarea>
-      <p class="muted">
-        Personas : <code>./data/personas.json</code> — Monde : <code>./data/world.json</code>.<br>
-        Les règles d’immersion sont dans <code>./assets/prompt.js</code>.
-      </p>
-      <details>
-        <summary>Conseils</summary>
-        <ul>
-          <li>Changer de persona réinitialise la conversation (immersion).</li>
-          <li>“Voix” utilise la synthèse intégrée du navigateur ou Piper si activé.</li>
-        </ul>
-      </details>
-    </aside>
+    <!-- Panneau éditeurs (bas) -->
+    <section class="panel" id="editors">
+      <div class="tabs">
+        <button class="tab-btn active" data-tab="world-tab">Monde</button>
+        <button class="tab-btn" data-tab="personas-tab">Personas.json</button>
+        <button class="tab-btn" data-tab="prompt-tab">Prompt (règles)</button>
+      </div>
+
+      <!-- Monde -->
+      <div class="tab active" id="world-tab">
+        <textarea id="world" spellcheck="false"></textarea>
+        <p class="muted hint">
+          Source actuelle chargée depuis <code>./data/world.json</code>. Vous pouvez éditer ici pour tester puis copier/coller dans le fichier.
+        </p>
+      </div>
+
+      <!-- Personas -->
+      <div class="tab" id="personas-tab">
+        <textarea id="personasEditor" spellcheck="false" placeholder='[ { "id":"gaspard", "name":"Gaspard — Pêche, chevaux et tradition", "bio":"…", "sfxProfile":"male", "piperVoice":"fr_FR-mls-medium", "speaker":5 }, … ]'></textarea>
+        <p class="muted hint">
+          Éditeur JSON des personas (affichage “Prénom — Groupe”). Fichier source : <code>./data/personas.json</code>.
+        </p>
+      </div>
+
+      <!-- Prompt (règles) -->
+      <div class="tab" id="prompt-tab">
+        <textarea id="promptEditor" spellcheck="false" placeholder="// Extrait de assets/prompt.js (fonction makeSystem)…"></textarea>
+        <p class="muted hint">
+          Règles système/immersion. Fichier source : <code>./assets/prompt.js</code>. (Pour impacter le runtime, il faudra faire lire ce contenu par <code>app.js</code>.)
+        </p>
+      </div>
+    </section>
   </main>
 
   <!-- Overlay de boot (préchargement immersif) -->
@@ -98,7 +122,21 @@
     </div>
   </div>
 
-  <!-- Script unique -->
-  <script type="module" src="./assets/app.js?v=5"></script>
+  <!-- Script principal -->
+  <script type="module" src="./assets/app.js?v=6"></script>
+
+  <!-- Mini-script onglets (indépendant de app.js) -->
+  <script>
+    // gestion simple des onglets en bas
+    const tabBtns = document.querySelectorAll('.tab-btn');
+    const tabs    = document.querySelectorAll('.tab');
+    tabBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        const id = btn.dataset.tab;
+        tabBtns.forEach(b => b.classList.toggle('active', b === btn));
+        tabs.forEach(t => t.classList.toggle('active', t.id === id));
+      });
+    });
+  </script>
 </body>
 </html>
