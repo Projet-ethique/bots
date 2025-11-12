@@ -399,6 +399,9 @@ async function loadData() {
     const label = x.displayName || (x.firstName && x.group ? `${x.firstName} — ${x.group}` : x.name || x.id);
     return `<option value="${x.id}">${escapeHtml(label)}</option>`;
   }).join("");
+  updateAvatar();
+try { preloadSfxProfile(getSfxProfile()); } catch {}
+
 
   // Modèles
   modelSel.innerHTML = MODEL_LIST.map(m => `<option value="${m.id}">${m.label}</option>`).join("");
@@ -481,8 +484,10 @@ function addMsg(role, text) {
 
 personaSel?.addEventListener("change", () => {
   resetConversation();
+  updateAvatar();
   try { preloadSfxProfile(getSfxProfile()); } catch {}
 });
+
 
 function resetConversation() {
   if ("speechSynthesis" in window) window.speechSynthesis.cancel();
