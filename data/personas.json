@@ -54,7 +54,8 @@
       "On prépare un plan clair et sûr."
     ],
     "farewellStyle": "cool",
-    "piperVoice": "fr_FR/mls/medium"
+    "piperVoice": "fr_FR/mls/medium",
+    "speaker": "123"
   },
   {
     "id": "lia-ln",
@@ -72,7 +73,8 @@
       "On peut valoriser l’écotourisme."
     ],
     "farewellStyle": "cool",
-    "piperVoice": "fr_FR/siwis/medium"
+    "piperVoice": "fr_FR/mls/medium",
+    "speaker": "107"
   },
   {
     "id": "téo-pct",
@@ -90,7 +92,8 @@
       "On garde la mer vivante."
     ],
     "farewellStyle": "touchy",
-    "piperVoice": "fr_FR/upmc/medium"
+    "piperVoice": "fr_FR/upmc/medium",
+    "speaker": "1"
   },
   {
     "id": "rafi-rt",
@@ -108,6 +111,7 @@
       "On a besoin de boulot, mais pas à n’importe quel prix."
     ],
     "farewellStyle": "cool",
-    "piperVoice": "fr_FR/mls/medium"
+    "piperVoice": "fr_FR/mls/medium",
+    "speaker": "77"
   }
 ]
