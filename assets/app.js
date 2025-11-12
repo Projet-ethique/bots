@@ -232,15 +232,26 @@ async function speakWithPiper(text) {
         const voice   = await pickVoiceForPersona(pid);             // ex: "fr_FR-mls-medium"
         const spRaw   = persona.speaker ?? persona.piperSpeaker;    // "5" ou 5
         const speaker = Number.isFinite(Number(spRaw)) ? Number(spRaw) : 0;
-        const resp = await poketEngine.generate(clean, voice, speaker); // wav Blob (Engine) ou { wav } (WorkerEngine)
-        let blob = null;
-        if (resp?.wav instanceof Blob) blob = resp.wav;
-        else if (resp instanceof Blob) blob = resp;
-        if (blob) {
-          const audio = new Audio(URL.createObjectURL(blob));
-          audio.onplay = () => playSfxList(sfx, profile);
-          await audio.play();
-          return;
+        const resp = await poketEngine.generate(clean, voice, speaker);
+// piper-tts-web renvoie { file: Blob, phonemeData, ... } (cf. README)
+const blob = resp?.file ?? resp?.wav ?? (resp instanceof Blob ? resp : null);
+if (!blob) throw new Error("Piper returned no Blob");
+
+const audio = document.createElement("audio");
+audio.autoplay = true;
+const src = document.createElement("source");
+src.type = blob.type || "audio/wav";
+src.src  = URL.createObjectURL(blob);
+audio.appendChild(src);
+audio.onplay = () => playSfxList(sfx, profile);
+document.body.appendChild(audio);
+
+await audio.play();
+
+// on nettoie l’élément après un court délai
+setTimeout(() => { try { document.body.removeChild(audio); } catch {} }, 15000);
+return;
+
         }
       }
     } catch (e) {
