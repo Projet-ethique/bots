@@ -17,6 +17,7 @@
     ],
     "farewellStyle": "touchy",
     "sfxProfile": "male",        
+    "avatar": "./assets/avatars/Gaspard_profile.png",
     "piperVoice": "fr_FR-mls-medium",
      "speaker": "5"
   },
@@ -37,6 +38,7 @@
     ],
     "farewellStyle": "cool",
     "sfxProfile": "female",         
+    "avatar": "./assets/avatars/nae_profile.png",
     "piperVoice": "fr_FR/upmc/medium",
     "speaker": "0"
   },
@@ -57,6 +59,7 @@
     ],
     "farewellStyle": "cool",
     "sfxProfile": "male",
+    "avatar": "./assets/avatars/mika_profile.png",
     "piperVoice": "fr_FR/mls/medium",
     "speaker": "123"
   },
@@ -77,6 +80,7 @@
     ],
     "farewellStyle": "cool",
     "sfxProfile": "female",
+    "avatar": "./assets/avatars/lia_profile.png",
     "piperVoice": "fr_FR/mls/medium",
     "speaker": "107"
   },
@@ -97,6 +101,7 @@
     ],
     "farewellStyle": "touchy",
     "sfxProfile": "male",
+    "avatar": "./assets/avatars/teo_profile.png",
     "piperVoice": "fr_FR/upmc/medium",
     "speaker": "1"
   },
@@ -117,6 +122,7 @@
     ],
     "farewellStyle": "cool",
     "sfxProfile": "male",
+    "avatar": "./assets/avatars/bragi_profile.png",
     "piperVoice": "fr_FR/mls/medium",
     "speaker": "77"
   }
