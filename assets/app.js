@@ -376,6 +376,31 @@ async function loadData() {
       for (const m of prev) addMsg(m.role, m.content);
     }
   } catch {}
+// --- après avoir construit PERSONAS & personaSel ---
+const personasEd = document.getElementById("personasEditor");
+if (personasEd) {
+  personasEd.value = JSON.stringify(Object.values(PERSONAS), null, 2);
+  personasEd.addEventListener("change", () => {
+    try {
+      const arr = JSON.parse(personasEd.value || "[]");
+      if (Array.isArray(arr) && arr.length) {
+        PERSONAS = Object.fromEntries(arr.map(x => [x.id, x]));
+        personaSel.innerHTML = arr.map(x => {
+          const label = x.displayName || (x.firstName && x.group ? `${x.firstName} — ${x.group}` : x.name || x.id);
+          return `<option value="${x.id}">${escapeHtml(label)}</option>`;
+        }).join("");
+        updateAvatar();
+      }
+    } catch (e) { console.warn("personasEditor JSON invalide:", e); }
+  });
+}
+
+// --- remplir l’éditeur Prompt avec le texte de assets/prompt.js ---
+const promptEd = document.getElementById("promptEditor");
+if (promptEd) {
+  try { promptEd.value = await fetch("./assets/prompt.js").then(r => r.text()); }
+  catch {}
+}
 
   // Mémoire R2 (si route absente → ignore)
   try { await loadMemory(); } catch {}
