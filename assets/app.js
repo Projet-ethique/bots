@@ -12,8 +12,7 @@ const personaSel = document.getElementById("persona");
 const worldTa    = document.getElementById("world");
 const modelSel   = document.getElementById("model");
 const ttsChk     = document.getElementById("tts");
-const avatarEl  = document.getElementById("avatar");
-
+const avatarEl   = document.getElementById("avatar"); // <img> dans la zone chat
 
 // (optionnel) identifiants classe/élève
 const classInput = document.getElementById("classId");
@@ -40,7 +39,7 @@ function persistIds() {
   if (uid) localStorage.setItem("bt_user",  uid);
 }
 
-/* ============ Outils utiles ============ */
+/* ============ Utils ============ */
 function escapeHtml(s){ return (s||"").replace(/[&<>"']/g, c=>({ "&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c])); }
 function normalizeVoiceId(id){
   if (!id) return null;
@@ -48,8 +47,10 @@ function normalizeVoiceId(id){
 }
 function personaAvatarUrl(p) {
   if (p?.avatar) return p.avatar; // chemin explicite depuis personas.json
-  // fallback: assets/avatars/<FirstOrName>_profile.png
-  const base = (p?.firstName || p?.name || "avatar").normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g,'_');
+  // fallback: assets/avatars/<Prenom_ou_Nom>_profile.png
+  const base = (p?.firstName || p?.name || "avatar")
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .replace(/\s+/g,'_');
   return `./assets/avatars/${base}_profile.png`;
 }
 function updateAvatar() {
@@ -62,16 +63,27 @@ function updateAvatar() {
 }
 
 /* ============ TTS local Piper ============ */
-/** Par défaut, on utilise la lib Mintplex (simple, paramètre 'voiceId').
- *  Pour gérer un index de locuteur ('speaker'), active l'option Poket-Jony plus bas. */
-const USE_PIPER_MINTPLEX = false;   // lib simple: predict({ text, voiceId })
-const USE_PIPER_POKET    = true;  // passe à true si tu veux le paramètre speaker
+/** Par défaut, on passe par Poket-Jony (gère 'speaker'),
+ *  avec repli Mintplex (pas de 'speaker') puis WebSpeech.
+ *  Poket-Jony: engine.generate(text, voice, speaker). :contentReference[oaicite:0]{index=0} */
+const USE_PIPER_POKET    = true;   // speaker support
+const USE_PIPER_MINTPLEX = false;  // repli simple
 
-let ttsMint = null;                  // espace lib Mintplex
-let ttsPoket = null;                 // espace lib Poket-Jony
-let poketEngine = null;              // instance PiperWebEngine
-let TTS_VOICE_CACHE = {};            // { personaId : voiceId }
+let ttsPoket = null;
+let poketEngine = null;
+let ttsMint = null;
+let TTS_VOICE_CACHE = {}; // { personaId : voiceId }
 
+/* --- Poket-Jony (self-host) --- */
+async function ensurePoketLoaded() {
+  if (!USE_PIPER_POKET) return false;
+  if (ttsPoket) return true;
+  // ⚠️ Ce chemin doit correspondre au nom réel dans ton repo
+  ttsPoket = await import('/assets/vendor/piper-tts-web/index.min.js');
+  return true;
+}
+
+/* --- Mintplex (CDN) --- */
 async function ensureMintplexLoaded() {
   if (!USE_PIPER_MINTPLEX) return false;
   if (ttsMint) return true;
@@ -83,23 +95,9 @@ async function ensureMintplexLoaded() {
   return true;
 }
 
-// --- Poket-Jony (self-host sur GitHub Pages) ---
-const USE_PIPER_POKET = true;   // <- active Poket-Jony
-let ttsPoket = null;
-let poketEngine = null;
-
-async function ensurePoketLoaded() {
-  if (!USE_PIPER_POKET) return false;
-  if (ttsPoket) return true;
-  // On importe le bundle ESM directement depuis ton repo (GH Pages)
-  ttsPoket = await import('/assets/vendor/piper-tts-web/index.min.js');
-  return true;
-}
-
-
+/* --- Choix de la voix --- */
 async function pickVoiceForPersona(pid) {
   const persona = PERSONAS[pid] || {};
-  // Mintplex → choisir un voiceId connu de la lib
   if (USE_PIPER_MINTPLEX) {
     await ensureMintplexLoaded();
     const all = await ttsMint.voices();
@@ -109,7 +107,7 @@ async function pickVoiceForPersona(pid) {
     const entry = Object.entries(all).find(([_, meta]) => (meta?.language || "").toLowerCase().startsWith("fr"));
     return entry ? entry[0] : Object.keys(all)[0];
   }
-  // Poket-Jony → on renvoie la chaîne telle quelle (normalisée)
+  // Poket-Jony → string du modèle (ex: fr_FR-mls-medium, 125 speakers) :contentReference[oaicite:1]{index=1}
   return normalizeVoiceId(persona.piperVoice) || "fr_FR-mls-medium";
 }
 
@@ -143,21 +141,19 @@ const NV_SFX = {
     hmm:     "./assets/sfx/hmm_male.wav",
   },
   "female": {
-    grunt:   "./assets/sfx/grunt_male.wav",         // fallback si tu n’as pas grunt_woman
+    grunt:   "./assets/sfx/grunt_male.wav",         // fallback si pas de grunt_woman
     sigh:    "./assets/sfx/sigh_woman.wav",
     chuckle: "./assets/sfx/chuckle_woman.wav",
     hmm:     "./assets/sfx/hmm_woman.wav",
   }
 };
-
-// FR → clé SFX
+// FR → clé SFX normalisée
 const NV_MAP = {
   "grogne": "grunt", "grognement": "grunt",
   "soupire": "sigh", "soupir": "sigh",
   "rire": "chuckle", "riquette": "chuckle",
   "hmm": "hmm", "hum": "hmm"
 };
-
 const AUDIO_CACHE = {}; // { url : HTMLAudioElement }
 
 function getSfxProfile() {
@@ -186,7 +182,7 @@ function preloadSfxProfile(profile) {
   }
 }
 
-// Renvoie { clean, sfx }
+// { clean, sfx: ["grunt","sigh",...] }
 function parseNonVerbalsForTTS(text) {
   let s = String(text);
   const found = [];
@@ -219,56 +215,6 @@ function parseNonVerbalsForTTS(text) {
                    .filter(x => ["grunt","sigh","chuckle","hmm"].includes(x));
   return { clean: s, sfx };
 }
-
-function playSfxList(sfxList, profile) {
-  for (const key of sfxList) {
-    const url = pickSfxFile(profile, key);
-    if (!url) continue;
-    try {
-      const a = AUDIO_CACHE[url] || new Audio(url);
-      a.currentTime = 0;
-      a.volume = 0.6;
-      a.play();
-      AUDIO_CACHE[url] = a;
-    } catch {}
-  }
-}
-
-
-// Renvoie { clean, sfx: ["grunt","sigh",...] }
-function parseNonVerbalsForTTS(text) {
-  let s = String(text);
-  const found = [];
-
-  // <nv type="..."/>
-  s = s.replace(/<nv\b([^>]*?)\/>/gi, (_, attrs) => {
-    const t = /type\s*=\s*["']?([\w-]+)["']?/i.exec(attrs);
-    const raw = (t && t[1] || "").toLowerCase();
-    const key = NV_MAP[raw] || raw;
-    if (key) found.push(key);
-    return " … ";
-  });
-
-  // <nv>...</nv>
-  s = s.replace(/<nv\b[^>]*>([\s\S]*?)<\/nv>/gi, (_, inner) => {
-    const raw = (inner || "").trim().toLowerCase();
-    const key = NV_MAP[raw] || raw;
-    if (key) found.push(key);
-    return " … ";
-  });
-
-  // nettoyage
-  s = s.replace(/\b[hH]mpf+[\.\!\?]*/g, " … ");
-  s = s.replace(/\((?:grogne|soupire|soupir|rire|hum|hmm)\)/gi, " … ");
-  s = s.replace(/\*[^*]{0,30}\*/g, " ");
-  s = s.replace(/\s{2,}/g, " ").trim();
-  if (!s) s = "…";
-
-  const sfx = found.map(x => (NV_MAP[x] || x))
-                   .filter(x => ["grunt","sigh","chuckle","hmm"].includes(x));
-  return { clean: s, sfx };
-}
-
 function playSfxList(sfxList, profile) {
   for (const key of sfxList) {
     const url = pickSfxFile(profile, key);
@@ -295,14 +241,22 @@ async function speakWithPiper(text) {
   if (USE_PIPER_POKET) {
     try {
       await ensurePoketLoaded();
-      if (!poketEngine && ttsPoket?.PiperWebEngine) {
-        poketEngine = new ttsPoket.PiperWebEngine();
+      if (!poketEngine) {
+        // Tente l'engine Worker+WebGPU+VoiceProvider, sinon simple
+        if (ttsPoket?.PiperWebWorkerEngine && ttsPoket?.OnnxWebGPUWorkerRuntime && ttsPoket?.HuggingFaceVoiceProvider) {
+          poketEngine = new ttsPoket.PiperWebWorkerEngine({
+            onnxRuntime: new ttsPoket.OnnxWebGPUWorkerRuntime(),
+            voiceProvider: new ttsPoket.HuggingFaceVoiceProvider()
+          });
+        } else if (ttsPoket?.PiperWebEngine) {
+          poketEngine = new ttsPoket.PiperWebEngine();
+        }
       }
       if (poketEngine) {
         const voice = await pickVoiceForPersona(pid);             // ex: "fr_FR-mls-medium"
-        const spRaw = persona.speaker ?? persona.piperSpeaker;    // accepte "5" ou 5
+        const spRaw = persona.speaker ?? persona.piperSpeaker;    // "5" ou 5
         const speaker = Number.isFinite(Number(spRaw)) ? Number(spRaw) : 0;
-        const resp = await poketEngine.generate(clean, voice, speaker);
+        const resp = await poketEngine.generate(clean, voice, speaker); // generate(text, voice, speaker) :contentReference[oaicite:2]{index=2}
         let blob = null;
         if (resp?.wav instanceof Blob) blob = resp.wav;
         else if (resp instanceof Blob) blob = resp;
@@ -320,6 +274,7 @@ async function speakWithPiper(text) {
 
   // (B) Mintplex (pas de "speaker")
   try {
+    if (!USE_PIPER_MINTPLEX) throw new Error("Mintplex désactivé");
     await ensureMintplexLoaded();
     const voiceId = TTS_VOICE_CACHE[pid] || (TTS_VOICE_CACHE[pid] = await pickVoiceForPersona(pid));
     if (Number.isFinite(Number(persona.speaker ?? persona.piperSpeaker))) {
@@ -331,12 +286,14 @@ async function speakWithPiper(text) {
     audio.onplay = () => playSfxList(sfx, profile);
     await audio.play();
   } catch (e) {
-    console.warn("Mintplex TTS erreur, fallback WebSpeech:", e);
+    // Fallback WebSpeech
     if ("speechSynthesis" in window) {
       const u = new SpeechSynthesisUtterance(clean);
       u.lang = "fr-FR";
       window.speechSynthesis.cancel(); window.speechSynthesis.speak(u);
       playSfxList(sfx, profile);
+    } else {
+      console.warn("Aucune synthèse disponible :", e);
     }
   }
 }
@@ -357,7 +314,7 @@ const BOOT_LINES = [
   "Mika vérifie les outils…",
   "Lia repère les couloirs d’oiseaux…",
   "Téo range les filets au port…",
-  "Rafi poste l’annonce du débat…"
+  "Bragi poste l’annonce du débat…"
 ];
 let bootTimer = null, bootIndex = 0;
 
@@ -402,8 +359,7 @@ async function loadData() {
     return `<option value="${x.id}">${escapeHtml(label)}</option>`;
   }).join("");
   updateAvatar();
-try { preloadSfxProfile(getSfxProfile()); } catch {}
-
+  try { preloadSfxProfile(getSfxProfile()); } catch {}
 
   // Modèles
   modelSel.innerHTML = MODEL_LIST.map(m => `<option value="${m.id}">${m.label}</option>`).join("");
@@ -423,24 +379,6 @@ try { preloadSfxProfile(getSfxProfile()); } catch {}
 
   // Mémoire R2 (si route absente → ignore)
   try { await loadMemory(); } catch {}
-
-  // Pré-chargement voix (Mintplex) + SFX
-  try {
-    if (USE_PIPER_MINTPLEX) {
-      await ensureMintplexLoaded();
-      const ids = Object.keys(PERSONAS);
-      for (let i = 0; i < ids.length; i++) {
-        const pid = ids[i];
-        const v = await pickVoiceForPersona(pid);
-        TTS_VOICE_CACHE[pid] = v;
-        updateBootProgress(`(${i+1}/${ids.length}) ${PERSONAS[pid].name || pid} s’installe…`, Math.round(((i+1)/ids.length)*100));
-        try { await ttsMint.download(v); } catch {}
-      }
-    }
-  } catch {}
-
-  try { preloadSfxProfile("default"); } catch {}
-  try { preloadSfxProfile(getSfxProfile()); } catch {}
 
   hideBoot();
   inputEl?.focus();
@@ -489,7 +427,6 @@ personaSel?.addEventListener("change", () => {
   updateAvatar();
   try { preloadSfxProfile(getSfxProfile()); } catch {}
 });
-
 
 function resetConversation() {
   if ("speechSynthesis" in window) window.speechSynthesis.cancel();
