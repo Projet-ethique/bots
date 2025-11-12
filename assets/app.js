@@ -105,14 +105,11 @@ function stripNvForDisplay(text) {
 }
 
 /* ====== SFX non-verbaux (variantes homme/femme) ====== */
-/* Place tes fichiers :
-   /assets/sfx/chuckle_man.wav
-   /assets/sfx/chuckle_woman.wav
-   /assets/sfx/grunt_male.wav
-   /assets/sfx/hmm_male.wav
-   /assets/sfx/hmm_woman.wav
-   /assets/sfx/sigh_male.wav
-   /assets/sfx/sigh_woman.wav
+/* Place tes fichiers dans /assets/sfx/ :
+   chuckle_man.wav, chuckle_woman.wav,
+   grunt_male.wav,
+   hmm_male.wav, hmm_woman.wav,
+   sigh_male.wav, sigh_woman.wav
 */
 const NV_SFX = {
   "default": {
@@ -128,14 +125,14 @@ const NV_SFX = {
     hmm:     "./assets/sfx/hmm_male.wav",
   },
   "female": {
-    grunt:   "./assets/sfx/grunt_male.wav",        // pas de version dédiée → fallback
+    grunt:   "./assets/sfx/grunt_male.wav",         // fallback si tu n’as pas grunt_woman
     sigh:    "./assets/sfx/sigh_woman.wav",
     chuckle: "./assets/sfx/chuckle_woman.wav",
     hmm:     "./assets/sfx/hmm_woman.wav",
   }
 };
 
-// normalisation FR → clés SFX
+// FR → clé SFX
 const NV_MAP = {
   "grogne": "grunt", "grognement": "grunt",
   "soupire": "sigh", "soupir": "sigh",
@@ -170,6 +167,55 @@ function preloadSfxProfile(profile) {
     }
   }
 }
+
+// Renvoie { clean, sfx }
+function parseNonVerbalsForTTS(text) {
+  let s = String(text);
+  const found = [];
+
+  // <nv type="..."/>
+  s = s.replace(/<nv\b([^>]*?)\/>/gi, (_, attrs) => {
+    const t = /type\s*=\s*["']?([\w-]+)["']?/i.exec(attrs);
+    const raw = (t && t[1] || "").toLowerCase();
+    const key = NV_MAP[raw] || raw;
+    if (key) found.push(key);
+    return " … ";
+  });
+
+  // <nv>...</nv>
+  s = s.replace(/<nv\b[^>]*>([\s\S]*?)<\/nv>/gi, (_, inner) => {
+    const raw = (inner || "").trim().toLowerCase();
+    const key = NV_MAP[raw] || raw;
+    if (key) found.push(key);
+    return " … ";
+  });
+
+  // nettoyage
+  s = s.replace(/\b[hH]mpf+[\.\!\?]*/g, " … ");
+  s = s.replace(/\((?:grogne|soupire|soupir|rire|hum|hmm)\)/gi, " … ");
+  s = s.replace(/\*[^*]{0,30}\*/g, " ");
+  s = s.replace(/\s{2,}/g, " ").trim();
+  if (!s) s = "…";
+
+  const sfx = found.map(x => (NV_MAP[x] || x))
+                   .filter(x => ["grunt","sigh","chuckle","hmm"].includes(x));
+  return { clean: s, sfx };
+}
+
+function playSfxList(sfxList, profile) {
+  for (const key of sfxList) {
+    const url = pickSfxFile(profile, key);
+    if (!url) continue;
+    try {
+      const a = AUDIO_CACHE[url] || new Audio(url);
+      a.currentTime = 0;
+      a.volume = 0.6;
+      a.play();
+      AUDIO_CACHE[url] = a;
+    } catch {}
+  }
+}
+
 
 // Renvoie { clean, sfx: ["grunt","sigh",...] }
 function parseNonVerbalsForTTS(text) {
