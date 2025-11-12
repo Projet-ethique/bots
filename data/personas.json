@@ -16,7 +16,8 @@
       "Faisons simple et solide, c’est mieux."
     ],
     "farewellStyle": "touchy",
-"piperVoice": "fr_FR-mls-medium",
+    "sfxProfile": "male",        
+    "piperVoice": "fr_FR-mls-medium",
      "speaker": 5
   },
   {
@@ -35,6 +36,7 @@
       "Choisissons un lieu qui ne trouble pas les anciens."
     ],
     "farewellStyle": "cool",
+    "sfxProfile": "female",         
     "piperVoice": "fr_FR/upmc/medium",
     "speaker": "0"
   },
@@ -54,6 +56,7 @@
       "On prépare un plan clair et sûr."
     ],
     "farewellStyle": "cool",
+    "sfxProfile": "male",
     "piperVoice": "fr_FR/mls/medium",
     "speaker": "123"
   },
@@ -73,6 +76,7 @@
       "On peut valoriser l’écotourisme."
     ],
     "farewellStyle": "cool",
+    "sfxProfile": "female",
     "piperVoice": "fr_FR/mls/medium",
     "speaker": "107"
   },
@@ -92,6 +96,7 @@
       "On garde la mer vivante."
     ],
     "farewellStyle": "touchy",
+    "sfxProfile": "male",
     "piperVoice": "fr_FR/upmc/medium",
     "speaker": "1"
   },
@@ -111,6 +116,7 @@
       "On a besoin de boulot, mais pas à n’importe quel prix."
     ],
     "farewellStyle": "cool",
+    "sfxProfile": "male",
     "piperVoice": "fr_FR/mls/medium",
     "speaker": "77"
   }
