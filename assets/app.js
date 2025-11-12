@@ -492,7 +492,7 @@ async function sendMsg() {
     const r = await fetch(`${API_BASE}/chat`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ messages: history, system, model: chosenModel })
+body: JSON.stringify({ messages: history, system, persona, world, model: chosenModel })
     });
     const data = await r.json();
     if (!r.ok || data.error) throw new Error(data.error || "API error");
