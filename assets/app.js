@@ -48,8 +48,8 @@ function normalizeVoiceId(id){
 /* ============ TTS local Piper ============ */
 /** Par défaut, on utilise la lib Mintplex (simple, paramètre 'voiceId').
  *  Pour gérer un index de locuteur ('speaker'), active l'option Poket-Jony plus bas. */
-const USE_PIPER_MINTPLEX = true;   // lib simple: predict({ text, voiceId })
-const USE_PIPER_POKET    = false;  // passe à true si tu veux le paramètre speaker
+const USE_PIPER_MINTPLEX = false;   // lib simple: predict({ text, voiceId })
+const USE_PIPER_POKET    = true;  // passe à true si tu veux le paramètre speaker
 
 let ttsMint = null;                  // espace lib Mintplex
 let ttsPoket = null;                 // espace lib Poket-Jony
