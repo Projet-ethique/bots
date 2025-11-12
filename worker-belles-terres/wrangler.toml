@@ -2,6 +2,7 @@ name = "worker-belles-terres"
 main = "src/index.js"
 compatibility_date = "2025-11-11"
 
+# R2: journal et mémoires de classe
 [[r2_buckets]]
-binding = "LOGS_BUCKET"     # utilisé dans le code (env.LOGS_BUCKET)
-bucket_name = "bt-logs"     # nom de ton bucket R2
+binding = "LOGS_BUCKET"     # => accessible dans le code via env.LOGS_BUCKET
+bucket_name = "bt-logs"     # => crée/active ce bucket dans le dashboard R2
