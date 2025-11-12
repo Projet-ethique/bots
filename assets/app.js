@@ -79,7 +79,16 @@ async function ensurePoketLoaded() {
   if (!USE_PIPER_POKET) return false;
   if (ttsPoket) return true;
   // ⚠️ Ce chemin doit correspondre au nom réel dans ton repo
-ttsPoket = await import('/assets/vendor/piper-tts-web/piper-tts-web.js');
+const candidates = [
+  './vendor/piper-tts-web/piper-tts-web.js',   // si vous avez renommé ainsi
+  './vendor/piper-tts-web/index.min.js',       // nom par défaut fréquent
+  './vendor/piper-tts-web/index.js'            // autre variante possible
+];
+for (const p of candidates) {
+  try { ttsPoket = await import(p); return true; } catch {}
+}
+console.warn("Piper (Poket-Jony) introuvable dans assets/vendor/piper-tts-web/");
+return false;
   return true;
 }
 
