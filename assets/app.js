@@ -79,7 +79,7 @@ async function ensurePoketLoaded() {
   if (!USE_PIPER_POKET) return false;
   if (ttsPoket) return true;
   // ⚠️ Ce chemin doit correspondre au nom réel dans ton repo
-  ttsPoket = await import('/assets/vendor/piper-tts-web/index.min.js');
+ttsPoket = await import('/assets/vendor/piper-tts-web/piper-tts-web.js');
   return true;
 }
 
