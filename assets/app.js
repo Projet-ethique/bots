@@ -83,17 +83,19 @@ async function ensureMintplexLoaded() {
   return true;
 }
 
-// (option) lib Poket-Jony — permet generate(text, voice, speaker)
+// --- Poket-Jony (self-host sur GitHub Pages) ---
+const USE_PIPER_POKET = true;   // <- active Poket-Jony
+let ttsPoket = null;
+let poketEngine = null;
+
 async function ensurePoketLoaded() {
   if (!USE_PIPER_POKET) return false;
   if (ttsPoket) return true;
-  try {
-    ttsPoket = await import("https://cdn.jsdelivr.net/npm/piper-tts-web@1.1.2/dist/index.min.js");
-  } catch {
-    ttsPoket = await import("https://esm.run/piper-tts-web@1.1.2");
-  }
+  // On importe le bundle ESM directement depuis ton repo (GH Pages)
+  ttsPoket = await import('/assets/vendor/piper-tts-web/index.min.js');
   return true;
 }
+
 
 async function pickVoiceForPersona(pid) {
   const persona = PERSONAS[pid] || {};
