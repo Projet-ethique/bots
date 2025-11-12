@@ -36,12 +36,21 @@
     .tab.active { display:block; }
     .hint { margin-top:6px; }
     /* Avatar persona en haut-droite de la fenêtre de chat */
+/* taille de la “case” (change 72px si tu veux plus grand) */
+:root { --avatar: 72px; }
+
 .chat-panel { position: relative; }
-.persona-avatar {
+
+/* avatar rond, recadré sans déformation */
+.persona-avatar{
   position:absolute; top:10px; right:12px;
-  width:56px; height:56px; border-radius:50%;
-  object-fit:cover; border:1px solid #ccc6; box-shadow:0 2px 8px #0002;
+  width:var(--avatar); height:var(--avatar);
+  border-radius:50%;
+  object-fit:cover;            /* remplit le cadre sans distorsion */
+  object-position:center;      /* recadre au centre */
+  border:1px solid #ccc6; box-shadow:0 2px 8px #0002;
 }
+
 
   </style>
 </head>
