@@ -68,13 +68,17 @@ function updateAvatar() {
 
 /* ============ TTS local Piper ============ */
 /** Choix par défaut : Poket-Jony (gère 'speaker'), repli Mintplex, puis WebSpeech. */
-const USE_PIPER_POKET    = true;   // support 'speaker'
-const USE_PIPER_MINTPLEX = false;  // repli simple si besoin
+let USE_PIPER_POKET    = true;   // support 'speaker'
+let USE_PIPER_MINTPLEX = false;  // repli simple si besoin
 
 let ttsPoket = null;
 let poketEngine = null;
 let ttsMint = null;
 let TTS_VOICE_CACHE = {}; // { personaId : voiceId }
+
+// -- TTS guard & watchdog --
+let TTS_LOCK = false;
+const POKET_TIMEOUT_MS = 9000; // après 9s -> fallback
 
 /** 🔧 Réécriture ciblée des fetch de la lib pour pointer vers /assets/vendor/piper-tts-web */
 function wirePiperPathRewrite() {
@@ -212,7 +216,7 @@ function parseNonVerbalsForTTS(text) {
 }
 
 /* ====== Synthèse ====== */
-// Petit bip de test pour vérifier la sortie audio (tu peux appeler window.btTestBeep() dans la console)
+// Bip de test pour vérifier la sortie audio
 window.btTestBeep = async function () {
   try {
     const Ctx = window.AudioContext || window.webkitAudioContext;
@@ -236,63 +240,73 @@ async function speakWithPiper(text) {
   const persona = PERSONAS[pid] || {};
   const profile = getSfxProfile();
 
-  // (A) Poket-Jony → support vrai du "speaker"
+  // (A) Poket-Jony → support 'speaker' + watchdog + anti-concurrence
   if (USE_PIPER_POKET) {
-    try {
-      await ensurePoketLoaded();
-      if (!poketEngine) {
-        // ⚠️ Force le runtime WASM (plus robuste que WebGPU sur certaines configs)
-        let rt = null;
-        if (ttsPoket?.OnnxWebWorkerRuntime) {
-          rt = new ttsPoket.OnnxWebWorkerRuntime();
-          console.info("[TTS] Runtime ONNX WASM (worker) sélectionné.");
-        } else if (ttsPoket?.OnnxWebGPUWorkerRuntime && navigator.gpu) {
-          rt = new ttsPoket.OnnxWebGPUWorkerRuntime();
-          console.info("[TTS] Runtime WebGPU sélectionné (fallback WASM indisponible).");
+    if (TTS_LOCK) { console.info("[TTS] lock: génération déjà en cours, on ignore."); }
+    else {
+      TTS_LOCK = true;
+      try {
+        await ensurePoketLoaded();
+        if (!poketEngine) {
+          // ⚠️ Force le runtime WASM (plus robuste que WebGPU sur Pages)
+          let rt = null;
+          if (ttsPoket?.OnnxWebWorkerRuntime) {
+            rt = new ttsPoket.OnnxWebWorkerRuntime();
+            console.info("[TTS] Runtime ONNX WASM (worker) sélectionné.");
+          } else if (ttsPoket?.OnnxWebGPUWorkerRuntime && navigator.gpu) {
+            rt = new ttsPoket.OnnxWebGPUWorkerRuntime();
+            console.info("[TTS] Runtime WebGPU sélectionné (fallback WASM indisponible).");
+          }
+          if (ttsPoket?.PiperWebWorkerEngine && rt && ttsPoket?.HuggingFaceVoiceProvider) {
+            poketEngine = new ttsPoket.PiperWebWorkerEngine({
+              onnxRuntime:  rt,
+              voiceProvider: new ttsPoket.HuggingFaceVoiceProvider()
+            });
+          } else if (ttsPoket?.PiperWebEngine) {
+            poketEngine = new ttsPoket.PiperWebEngine();
+            console.info("[TTS] PiperWebEngine (non-worker) utilisé.");
+          }
         }
+        if (poketEngine) {
+          const voice   = await pickVoiceForPersona(pid);
+          const spRaw   = persona.speaker ?? persona.piperSpeaker;
+          const speaker = Number.isFinite(Number(spRaw)) ? Number(spRaw) : 0;
 
-        if (ttsPoket?.PiperWebWorkerEngine && rt && ttsPoket?.HuggingFaceVoiceProvider) {
-          poketEngine = new ttsPoket.PiperWebWorkerEngine({
-            onnxRuntime:  rt,
-            voiceProvider: new ttsPoket.HuggingFaceVoiceProvider()
-          });
-        } else if (ttsPoket?.PiperWebEngine) {
-          // Fallback non-worker
-          poketEngine = new ttsPoket.PiperWebEngine();
-          console.info("[TTS] PiperWebEngine (non-worker) utilisé.");
+          const tlabel = `[TTS] generate ${Date.now()}`; // label unique
+          console.time(tlabel);
+          const genPromise = poketEngine.generate(clean, voice, speaker);
+          const timeoutPromise = new Promise((_, rej) => setTimeout(() => rej(new Error("TTS timeout")), POKET_TIMEOUT_MS));
+          let resp;
+          try { resp = await Promise.race([genPromise, timeoutPromise]); }
+          finally { try { console.timeEnd(tlabel); } catch {} }
+
+          const blob = resp?.file ?? resp?.wav ?? (resp instanceof Blob ? resp : null);
+          console.info("[TTS] voice=", voice, "speaker=", speaker, "blob=", blob && (blob.size + "B / " + (blob.type||"")));
+          if (!blob || !blob.size) throw new Error("Piper returned no/empty Blob");
+
+          const audio = document.createElement("audio");
+          audio.autoplay = true;
+          const src = document.createElement("source");
+          src.type = blob.type || "audio/wav";
+          src.src  = URL.createObjectURL(blob);
+          audio.appendChild(src);
+          audio.onplay  = () => playSfxList(sfx, profile);
+          audio.onended = () => { try { URL.revokeObjectURL(src.src); } catch {} };
+          document.body.appendChild(audio);
+          await audio.play();
+          setTimeout(() => { try { document.body.removeChild(audio); } catch {} }, 15000);
+          return;
         }
+      } catch (e) {
+        console.warn("Poket-Jony a échoué (ou timeout); fallback :", e);
+        // on laisse le bloc (B) tenter Mintplex/WebSpeech
+      } finally {
+        TTS_LOCK = false;
       }
-      if (poketEngine) {
-        const voice   = await pickVoiceForPersona(pid);             // ex: "fr_FR-mls-medium"
-        const spRaw   = persona.speaker ?? persona.piperSpeaker;    // "5" ou 5
-        const speaker = Number.isFinite(Number(spRaw)) ? Number(spRaw) : 0;
-
-        console.time("[TTS] generate");
-        const resp = await poketEngine.generate(clean, voice, speaker);
-        console.timeEnd("[TTS] generate");
-        const blob = resp?.file ?? resp?.wav ?? (resp instanceof Blob ? resp : null);
-        console.info("[TTS] voice=", voice, "speaker=", speaker, "blob=", blob && (blob.size + "B / " + (blob.type||"")));
-        if (!blob || !blob.size) throw new Error("Piper returned no/empty Blob");
-
-        const audio = document.createElement("audio");
-        audio.autoplay = true;
-        const src = document.createElement("source");
-        src.type = blob.type || "audio/wav";
-        src.src  = URL.createObjectURL(blob);
-        audio.appendChild(src);
-        audio.onplay = () => playSfxList(sfx, profile);
-        audio.onended = () => { try { URL.revokeObjectURL(src.src); } catch {} };
-        document.body.appendChild(audio);
-        await audio.play();
-        setTimeout(() => { try { document.body.removeChild(audio); } catch {} }, 15000);
-        return;
-      }
-    } catch (e) {
-      console.warn("Poket-Jony a échoué; bascule sur Mintplex :", e);
     }
   }
 
-  // (B) Mintplex (pas de "speaker")
+  // (B) Mintplex (pas de 'speaker')
   try {
     if (!USE_PIPER_MINTPLEX) throw new Error("Mintplex désactivé");
     await ensureMintplexLoaded();
@@ -300,11 +314,11 @@ async function speakWithPiper(text) {
     if (Number.isFinite(Number(persona.speaker ?? persona.piperSpeaker))) {
       console.info("[TTS] Note: Mintplex ne gère pas 'speaker', il est ignoré.");
     }
-    await ttsMint.download(voiceId, (p) => updateBootProgress(null, Math.round(p*100)));
     const wav = await ttsMint.predict({ text: clean, voiceId });
     const audio = new Audio(URL.createObjectURL(wav));
     audio.onplay = () => playSfxList(sfx, profile);
     await audio.play();
+    return;
   } catch (e) {
     // (C) Web Speech API
     if ("speechSynthesis" in window) {
