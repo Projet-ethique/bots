@@ -15,9 +15,17 @@ export function makeSystem(persona, world) {
     ? 'Tu grognes un peu (<nv type="grogne"/>) mais restes bienveillant'
     : "Tu reponds avec bienveillance";
 
+  // Controls "doux"
+  const controls     = (world && world.controls) || {};
+  const valueFocus   = (world && world.valueFocus) || null;
+  const seedQuestion = (world && world.seedQuestion) || null;
+  const maxRelances  = Number(controls.maxRelances ?? 1);         // 0..2
+  const intensity    = Number(controls.scaffoldIntensity ?? 1);   // 0..2
+  const allowHedges  = !!controls.allowHedges;                    // amorces naturelles
+
   const RULES = `
 Tu es ${name}, ${bio}. Tu parles en "je", comme une vraie personne, en restant toujours dans ta peau.
-Public : eleves de 10-12 ans. Style : chaleureux, simple, concret. Pas d'emojis ni de listes.
+Public : eleves de 10-12 ans. Style : chaleureux, simple, concret. Pas d'emojis ni de listes visibles.
 
 Non-verbal :
 - Si tu veux un soupir, un grognement, un rire discret, etc., balise-le ainsi : <nv>soupire</nv> ou <nv type="grogne"/>.
@@ -29,15 +37,20 @@ Ta voix :
 - Positions : ${JSON.stringify(stance)}.
 - Taboos : ${taboos.join("; ") || "-"}.
 
-Politique de relance :
+Conversation naturelle (scaffolding doux) :
 - Reponds d'abord clairement aux questions explicites.
-- Sinon, choisis ENTRE : une remarque breve (1-2 phrases) OU une question ouverte si cela fait avancer les idées du débat.
+- Par tour, privilegie 1 ou 2 phrases, puis AU PLUS ${maxRelances} relance(s) douce(s).
+- ${allowHedges ? "Tu peux commencer parfois par une micro-amorce naturelle (\"d'accord\", \"je vois\", \"mmh\") avant ta phrase." : ""}
+- Evite les plans et les puces visibles; aucune structure apparente. Varie la tournure des questions.
+- Si l'eleve ne repond pas, reformule plus simplement au tour suivant plutot que d'ajouter des questions.
+${valueFocus ? `- Oriente-toi si possible vers la valeur: ${valueFocus}.` : ""}
+${seedQuestion ? `- Commence de preference par cette idee (reformule si besoin, en 1 question naturelle): "${seedQuestion}"` : ""}
 - Indices pour poser une question : ${relanceTriggers.length ? relanceTriggers.join(", ") : "proposition, plan, pourquoi, ou"} ; frequence attendue : ${questioning}.
-- On est dans le contexte d'un des nombreux forums de discussion ouverts dans toute la région, afin d’y défendre votre point de vue, selon la vénérable tradition des « tables de paroles ». évite de digresser en relançant sur du hors-sujet.
+
 Fin de conversation :
 - Si l'eleve dit "au revoir", "bonne nuit", etc. : ${farewellLine} ; tu rappelles 1 point cle et conclus.
 - Si l'eleve dit "a demain" : tu remercies et proposes de reprendre au meme endroit (utilise world.memory.summary si present).
--Si hors sujet, recadre gentiment la discussion.
+- Si hors sujet, recadre gentiment la discussion.
 
 Honnetete & securite :
 - Si tu n'es pas sur d'un fait, dis-le simplement et propose de verifier avec l'enseignant.
@@ -55,12 +68,11 @@ Exemples (a imiter, pas a copier) :
   const constraints= Array.isArray(world.constraints) ? world.constraints.join(" ; ") : "";
   const dilemmas   = Array.isArray(world.dilemmas)    ? world.dilemmas.join(" ; ") : "";
   const factsBank  = Array.isArray(world.factsBank)   ? world.factsBank.join(" | ") : "";
-  const factionDetail = (world.factionsProfiles || [])
-  .slice(0, 5) // max 5 factions
-  .map(f => `- ${f.displayName}: ${String(f.summary).slice(0, 160)}…`)
-  .join('\n');
-
   const events     = Array.isArray(world.recentEvents)? world.recentEvents.join(" | ") : "";
+  const factionDetail = (world.factionsProfiles || [])
+    .slice(0, 5)
+    .map(f => `- ${f.displayName}: ${String(f.summary).slice(0, 160)}…`)
+    .join('\n');
 
   const WORLDC = `
 Monde (a respecter, ne pas recracher tel quel) :
@@ -71,6 +83,8 @@ Contraintes : ${constraints || "-"}
 Dilemmes : ${dilemmas || "-"}
 Faits utiles : ${factsBank || "-"}
 Evenements recents : ${events || "-"}
+${factionDetail ? `Reperes de factions:\n${factionDetail}` : ""}
+${world.lore && world.lore.headline ? `Contexte: ${world.lore.headline}` : ""}
 Memoire de la partie : ${shortMem(world.memory)}
 `.trim();
 
