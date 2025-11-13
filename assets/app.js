@@ -79,9 +79,6 @@ let poketEngine = null;
 let ttsMint = null;
 let TTS_VOICE_CACHE = {}; // { personaId : voiceId }
 
-// -- TTS guard & watchdog --
-let TTS_LOCK = false;
-const POKET_TIMEOUT_MS = 9000; // après 9s -> fallback
 
 /** 🔧 Réécriture ciblée des fetch de la lib pour pointer vers /assets/vendor/piper-tts-web */
 function wirePiperPathRewrite() {
