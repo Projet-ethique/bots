@@ -16,10 +16,11 @@
       "Faisons simple et solide, c’est mieux."
     ],
     "farewellStyle": "touchy",
-    "sfxProfile": "male",        
+    "sfxProfile": "male",
     "avatar": "./assets/avatars/Gaspard_profile.png",
     "piperVoice": "fr_FR-mls-medium",
-     "speaker": "5"
+    "speaker": "5",
+    "openaiVoice": "sage"
   },
   {
     "id": "naé-cham",
@@ -37,10 +38,11 @@
       "Choisissons un lieu qui ne trouble pas les anciens."
     ],
     "farewellStyle": "cool",
-    "sfxProfile": "female",         
+    "sfxProfile": "female",
     "avatar": "./assets/avatars/nae_profile.png",
     "piperVoice": "fr_FR/upmc/medium",
-    "speaker": "0"
+    "speaker": "0",
+    "openaiVoice": "shimmer"
   },
   {
     "id": "mika-cp",
@@ -61,7 +63,8 @@
     "sfxProfile": "male",
     "avatar": "./assets/avatars/mika_profile.png",
     "piperVoice": "fr_FR/mls/medium",
-    "speaker": "123"
+    "speaker": "123",
+    "openaiVoice": "alloy"
   },
   {
     "id": "lia-ln",
@@ -82,7 +85,8 @@
     "sfxProfile": "female",
     "avatar": "./assets/avatars/lia_profile.png",
     "piperVoice": "fr_FR/mls/medium",
-    "speaker": "107"
+    "speaker": "107",
+    "openaiVoice": "coral"
   },
   {
     "id": "téo-pct",
@@ -103,13 +107,14 @@
     "sfxProfile": "male",
     "avatar": "./assets/avatars/teo_profile.png",
     "piperVoice": "fr_FR/upmc/medium",
-    "speaker": "1"
+    "speaker": "1",
+    "openaiVoice": "verse"
   },
   {
     "id": "bragi-rt",
     "firstName": "Bragi",
     "group": "@Rebelle-Terre",
-    "name": "Rafi — @Rebelle-Terre",
+    "name": "Bragi — @Rebelle-Terre",
     "bio": "pragmatique cash; ‘il faut bien gagner sa vie’",
     "tics": ["parle franc", "réseaux sociaux locaux"],
     "questioning": "often",
@@ -124,6 +129,7 @@
     "sfxProfile": "male",
     "avatar": "./assets/avatars/bragi_profile.png",
     "piperVoice": "fr_FR/mls/medium",
-    "speaker": "77"
+    "speaker": "77",
+    "openaiVoice": "sage"
   }
 ]
