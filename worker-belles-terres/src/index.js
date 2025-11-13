@@ -3,11 +3,10 @@
 //   - POST /api/chat
 //   - POST /api/save
 //   - GET/POST /api/memory
-//   - GET/POST /api/tts  (OpenAI TTS, stream audio)
+//   - GET/POST /api/tts  (OpenAI TTS, stream audio; supporte ?style= …)
 //
-// CORS inclus. R2 (LOGS_BUCKET) réutilisé.
-//
-// Requiert: OPENAI_API_KEY
+// Requiert: env.OPENAI_API_KEY ; Binding R2: LOGS_BUCKET
+// CORS inclus.
 
 const OPENAI = "https://api.openai.com/v1";
 
@@ -15,7 +14,6 @@ export default {
   async fetch(req, env, ctx) {
     const url = new URL(req.url);
 
-    // CORS preflight
     if (req.method === "OPTIONS") {
       return new Response(null, { status: 204, headers: cors() });
     }
@@ -85,7 +83,6 @@ export default {
         }
       }
 
-      // ---- Not found ----
       return json({ error: "not_found" }, 404);
     } catch (e) {
       return json({ error: "exception", detail: String(e) }, 500);
@@ -115,9 +112,10 @@ async function handleTts(req, env, url) {
   let text   = "";
   let voice  = "alloy";
   let model  = "gpt-4o-mini-tts";
-  let format = "mp3"; // mp3 / wav / opus ...
+  let format = "mp3"; // mp3 / wav / opus …
+  let style  = "";    // <- NOUVEAU
 
-  // 1) Lire le POST JSON si présent
+  // 1) Lire body (POST)
   if (req.method === "POST") {
     const ct = req.headers.get("content-type") || "";
     if (ct.includes("application/json")) {
@@ -126,22 +124,29 @@ async function handleTts(req, env, url) {
       voice  = (b.voice  ?? voice);
       model  = (b.model  ?? model);
       format = (b.format ?? format);
+      style  = (b.style  ?? style);
     } else if (ct.startsWith("text/")) {
       text = await req.text();
     }
   } else if (req.method === "GET") {
-    // 2) GET classique
     text = url.searchParams.get("text") || text;
   }
 
-  // 3) Toujours autoriser les query params à surcharger (POST ou GET)
+  // 2) Query params (surchargent)
   voice  = url.searchParams.get("voice")  || voice;
   model  = url.searchParams.get("model")  || model;
   format = url.searchParams.get("format") || format;
+  style  = url.searchParams.get("style")  || style;
   if (!text && url.searchParams.get("text")) text = url.searchParams.get("text");
 
   if (!text || !text.trim()) return json({ error: "missing_text" }, 400);
   if (!env.OPENAI_API_KEY)   return json({ error: "OPENAI_API_KEY missing" }, 500);
+
+  // 3) Injection de style dans l’input (prompt TTS)
+  //    On guide la voix: accent, émotion, intonation, vitesse, ton, chuchoté, etc.
+  const styledInput = style
+    ? `Read the following in this style (keep it natural and in French if the text is French): ${style}\n\nText:\n${text}`
+    : text;
 
   const upstream = await fetch(`${OPENAI}/audio/speech`, {
     method: "POST",
@@ -149,7 +154,7 @@ async function handleTts(req, env, url) {
       "Authorization": `Bearer ${env.OPENAI_API_KEY}`,
       "Content-Type": "application/json"
     },
-    body: JSON.stringify({ model, voice, input: text, format })
+    body: JSON.stringify({ model, voice, input: styledInput, format })
   });
 
   if (!upstream.ok) {
