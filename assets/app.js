@@ -35,6 +35,7 @@ let sessionId = crypto.randomUUID();
 let MEMORY = { summary: "", notes: [] };
 let HISTORY_BY_PERSONA = {};
 let CURRENT_PID = null;
+let QUESTION_BANK = {};
 
 // -- TTS guard & watchdog --
 let TTS_LOCK = false;
