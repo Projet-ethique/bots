@@ -1,10 +1,13 @@
 // worker-belles-terres/src/index.js
-// Minimal Worker API for Belles-Terres:
-//   - POST /api/chat      -> OpenAI Chat Completions
-//   - POST /api/save      -> save NDJSON transcript in R2
-//   - GET/POST /api/memory-> small per-class/user memory in R2
-//   - GET/POST /api/tts   -> OpenAI TTS (streams audio back)
-// CORS included.
+// API Belles-Terres (Cloudflare Worker):
+//   - POST /api/chat
+//   - POST /api/save
+//   - GET/POST /api/memory
+//   - GET/POST /api/tts  (OpenAI TTS, stream audio)
+//
+// CORS inclus. R2 (LOGS_BUCKET) réutilisé.
+//
+// Requiert: OPENAI_API_KEY
 
 const OPENAI = "https://api.openai.com/v1";
 
@@ -18,7 +21,7 @@ export default {
     }
 
     try {
-      // ---- TTS (OpenAI -> streams audio) ----
+      // ---- TTS ----
       if (url.pathname === "/api/tts") {
         return handleTts(req, env, url);
       }
@@ -108,31 +111,37 @@ function json(obj, status = 200) {
 }
 
 async function handleTts(req, env, url) {
-  // Accept both GET and POST
-  let text = "";
-  let voice = "alloy";
-  let model = "gpt-4o-mini-tts";
-  let format = "mp3";
+  // Valeurs par défaut
+  let text   = "";
+  let voice  = "alloy";
+  let model  = "gpt-4o-mini-tts";
+  let format = "mp3"; // mp3 / wav / opus ...
 
-  if (req.method === "GET") {
-    text   = url.searchParams.get("text")   || "";
-    voice  = url.searchParams.get("voice")  || voice;
-    model  = url.searchParams.get("model")  || model;
-    format = url.searchParams.get("format") || format;
-  } else if (req.method === "POST") {
+  // 1) Lire le POST JSON si présent
+  if (req.method === "POST") {
     const ct = req.headers.get("content-type") || "";
     if (ct.includes("application/json")) {
-      const b = await req.json();
-      text   = b.text ?? "";
-      voice  = b.voice || voice;
-      model  = b.model || model;
-      format = b.format || format;
-    } else {
+      const b = await req.json().catch(() => ({}));
+      text   = (b.text   ?? text).toString();
+      voice  = (b.voice  ?? voice);
+      model  = (b.model  ?? model);
+      format = (b.format ?? format);
+    } else if (ct.startsWith("text/")) {
       text = await req.text();
     }
+  } else if (req.method === "GET") {
+    // 2) GET classique
+    text = url.searchParams.get("text") || text;
   }
 
-  if (!text) return json({ error: "missing_text" }, 400);
+  // 3) Toujours autoriser les query params à surcharger (POST ou GET)
+  voice  = url.searchParams.get("voice")  || voice;
+  model  = url.searchParams.get("model")  || model;
+  format = url.searchParams.get("format") || format;
+  if (!text && url.searchParams.get("text")) text = url.searchParams.get("text");
+
+  if (!text || !text.trim()) return json({ error: "missing_text" }, 400);
+  if (!env.OPENAI_API_KEY)   return json({ error: "OPENAI_API_KEY missing" }, 500);
 
   const upstream = await fetch(`${OPENAI}/audio/speech`, {
     method: "POST",
@@ -148,7 +157,6 @@ async function handleTts(req, env, url) {
     return json({ error: "openai_tts_error", detail }, upstream.status);
   }
 
-  // Stream audio back
   const contentType =
     format === "wav"  ? "audio/wav"  :
     format === "opus" ? "audio/ogg"  :
