@@ -1,115 +1,127 @@
 <!-- bots/docs/README.html -->
-<div style="display:flex; flex-direction:column; gap:10px; font-size:13px; line-height:1.45;">
-  <h3 style="margin:4px 0 0;">Comment éditer (pas-à-pas)</h3>
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <title>Belles-Terres — Guide équipe (édition à chaud, sans technique)</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    body{font:16px/1.6 system-ui,Segoe UI,Roboto,Arial,sans-serif;color:#eee;background:#111;margin:0;padding:24px}
+    h1,h2,h3{color:#fff;margin:0.6em 0}
+    .card{background:#151515;border:1px solid #242424;border-radius:12px;padding:14px;margin:14px 0}
+    code,kbd{background:#1f1f1f;border:1px solid #2a2a2a;border-radius:6px;padding:0 6px}
+    pre{background:#0f0f0f;border:1px solid #242424;border-radius:10px;padding:12px;overflow:auto}
+    ul,ol{margin-left:1.1em}
+    .muted{color:#aaa}
+    .ok{color:#9be79b}
+    .warn{color:#f6d06f}
+    .bad{color:#ff9393}
+  </style>
+</head>
+<body>
+  <h1>Belles-Terres — Guide “édition à chaud” (pour l’équipe)</h1>
+  <p class="muted">Ce guide explique <strong>comment modifier le contenu</strong> directement depuis la page (bas d’écran), <strong>sans logiciel</strong> et <strong>sans risque</strong>. Vous testez, et si ça vous convient, on recopie plus tard dans les “vrais” fichiers.</p>
 
-  <p><strong>But des trois onglets</strong> en bas de la page : permettre des <em>tests à chaud</em> (sans IDE). Les modifications faites ici <u>n’écrasent pas</u> automatiquement les fichiers : vous testez, puis vous copiez-collez dans les fichiers réels quand c’est bon.</p>
+  <div class="card">
+    <h2>Ce que vous pouvez changer (sans rien casser)</h2>
+    <ul>
+      <li><strong>Monde</strong> : le contexte, les lieux, les faits, le petit “lore”.</li>
+      <li><strong>Personas</strong> : la fiche de chaque personnage (style, tics, positions, voix).</li>
+      <li><strong>Prompt (règles)</strong> : comment l’IA parle (ton simple, bienveillance, pas de listes visibles, etc.).</li>
+      <li><strong>Questions</strong> <span class="ok">Nouveau</span> : une <em>banque</em> de questions par valeur (respect, justice, partage…). Le bot en pioche 1 comme graine.</li>
+      <li><strong>Explications</strong> : ce guide (vous le lisez en ce moment).</li>
+      <li><strong>Commentaires</strong> : un petit formulaire pour nous laisser un feedback (il est stocké automatiquement).</li>
+          <li><strong>Coût api</strong> 0.015$ la minute de génération audio soit 0.9$ l'heure, et texte négligeable (0.02-0.03$ pour 1000 prompt)</li>
 
-  <ol style="margin:0 0 0 18px; padding:0; display:flex; flex-direction:column; gap:8px;">
-    <li><strong>Monde</strong> — charge <code>./data/world.json</code> au démarrage. Éditez le JSON, puis cliquez « <em>Nouvelle conversation</em> » pour redémarrer le bot avec ce monde en mémoire. <em>Quand c’est bon</em> : copiez-collez vers <code>./data/world.json</code>.</li>
-    <li><strong>Personas.json</strong> — l’éditeur affiche la liste actuelle. Toute modification JSON <em>valide</em> remplace la liste en mémoire immédiatement (le menu Persona et l’avatar se mettent à jour). <em>Quand c’est bon</em> : copiez-collez vers <code>./data/personas.json</code>.</li>
-    <li><strong>Prompt (règles)</strong> — affiche le code de <code>./assets/prompt.js</code> pour consultation. Par défaut, ce que vous tapez ici n’est pas « rechargé » par l’app. Pour appliquer des règles, modifiez le vrai fichier <code>./assets/prompt.js</code> (copier-coller, puis publier).</li>
-    <li><strong>Coût api</strong> 0.015$ la minute de génération audio soit 0.9$ l'heure, et texte négligeable (0.02-0.03$ pour 1000 prompt)</li>
+    </ul>
+  </div>
 
-  </ol>
+  <div class="card">
+    <h2>Mode d’emploi (3 étapes)</h2>
+    <ol>
+      <li>Ouvrir l’onglet voulu (Monde / Personas / Prompt / <strong>Questions</strong>).</li>
+      <li>Éditer le texte (ou le JSON). <em>Astuce :</em> allez-y par petites touches.</li>
+      <li>Cliquer sur <strong>Nouvelle conversation</strong> pour tester le résultat.</li>
+    </ol>
+    <p class="muted">Vos essais restent en mémoire locale du navigateur. Rien n’écrase les fichiers tant que l’on ne les recopie pas.</p>
+  </div>
 
-  <h4 style="margin:6px 0 0;">Formats attendus</h4>
-  <details open>
-    <summary><strong>Structure minimale de <code>world.json</code></strong></summary>
-<pre style="white-space:pre-wrap;background:#0001;padding:8px;border-radius:8px;overflow:auto;font-size:12px;">{
+  <div class="card">
+    <h2>Que contient chaque onglet ?</h2>
+
+    <h3>Monde</h3>
+    <p>Le contexte de l’histoire (lieux, contraintes, dilemmes, faits utiles, petits événements, et un “lore” court). Le bot s’appuie dessus pour rester cohérent.</p>
+<pre>{
   "lieu": "Belles-Terres — Côte-Nord",
   "places": ["Salle du forum", "Port", "Plateau des éoliennes"],
-  "factions": ["Pêche &amp; traditions", "Techniciens éoliens", "Militants écologie", "Écotourisme"],
   "constraints": ["Budget limité", "Bruits", "Oiseaux migrateurs"],
-  "dilemmas": ["Plus d’énergie ou préserver la vue ?", "Mines vs biodiversité"],
-  "factsBank": [
-    "Une éolienne typique fournit ...",
-    "Les terres rares servent ... (ne pas inventer de chiffres)."
-  ],
-  "recentEvents": ["Tempête récente", "Annonce d’un projet d’éoliennes"],
-  "memory": { "summary": "", "notes": [] }
+  "factsBank": ["Phrase factuelle courte n°1", "n°2"],
+  "recentEvents": ["Événement 1", "Événement 2"],
+  "lore": { "headline": "La nouvelle du jour… (1 phrase max)" }
 }</pre>
-    <p class="muted">Astuce : des phrases courtes dans <code>factsBank</code> — le bot les citera comme « mini-infos ».</p>
-  </details>
+    <p class="muted">Conseil : des <strong>phrases courtes</strong> dans <code>factsBank</code>. Si vous n’êtes pas sûr d’un fait : écrivez “à vérifier”.</p>
 
-  <details open>
-    <summary><strong>Éléments utiles dans <code>personas.json</code></strong></summary>
-<pre style="white-space:pre-wrap;background:#0001;padding:8px;border-radius:8px;overflow:auto;font-size:12px;">[
+    <h3>Personas</h3>
+    <p>Chaque personnage parle en “je” et garde sa personnalité. Champs utiles :</p>
+<pre>[
   {
     "id": "gaspard",
-    "displayName": "Gaspard — Pêche &amp; traditions",
-    "bio": "Vieux marin, grincheux mais gentil",
-    "sfxProfile": "male",
+    "displayName": "Gaspard — Pêche & traditions",
+    "bio": "Vieux marin grincheux mais gentil",
+    "relanceTriggers": ["proposition","où","pourquoi"],
+    "taboos": ["pas de moqueries", "pas de chiffres inventés"],
     "avatar": "./assets/avatars/Gaspard_profile.png",
-    "piperVoice": "fr_FR-mls-medium",
-    "speaker": 5,
-    "farewellStyle": "touchy",
-    "relanceTriggers": ["proposition","plan","impacts","où"],
-    "taboos": ["moqueries","mensonges factuels"]
+    "openaiVoice": "alloy",              // voix de synthèse
+    "openaiStyle": "older sailor, calm", // style de voix
+    "openaiRate": 0.95,                  // un peu plus lent (0.5–1.5)
+    "valueFocus": "respect"              // angle de question préféré
   }
 ]</pre>
-    <ul style="margin:6px 0 0 18px;">
-      <li><code>id</code> unique ; <code>displayName</code> affiché dans le menu.</li>
-      <li><code>avatar</code> (PNG/JPG 1024×1024 conseillé) — recadré via <code>object-fit:cover</code>.</li>
-      <li><code>piperVoice</code> + <code>speaker</code> : voices multi-locuteurs (si la voix le permet).</li>
+    <p class="muted">Ne changez pas l’ordre des crochets/virgules. Si vous voyez du rouge, c’est que le <strong>JSON est invalide</strong> (il faut corriger).</p>
+
+    <h3>Prompt (règles)</h3>
+    <p>Le “mode d’emploi” interne : ton 10–12 ans, concision, pas de listes visibles, 0–1 relance douce, etc. <strong>Info :</strong> l’éditeur ici est informatif — pour vraiment changer ces règles, il faudra recopier dans le vrai fichier plus tard.</p>
+
+    <h3>Questions <span class="ok">Nouveau</span></h3>
+    <p>Le bot prend 1 <em>question graine</em> au début selon la <strong>valeur</strong> du persona (respect, justice, partage…). Il pose ensuite <strong>au plus 1 relance courte</strong>. Vous pouvez enrichir :</p>
+<pre>{
+  "respect": {
+    "initial": ["Le règlement du parc respecte-t-il tout le monde ?"],
+    "relances": ["À quoi servent ces règles ici ?", "Qui est avantagé ?"]
+  },
+  "justice": {
+    "initial": ["Quelle décision te paraît la plus juste ?"],
+    "relances": ["Quels critères (besoin, mérite, hasard) ?"]
+  }
+}</pre>
+    <p class="muted">Astuce : 1 ou 2 questions par catégorie suffisent largement pour éviter l’effet “questionnaire”.</p>
+
+    <h3>Explications</h3>
+    <p>Ce guide.</p>
+
+    <h3>Commentaires</h3>
+    <p>Un champ pour nous envoyer un avis (idée, bug). Pas besoin d’e-mail : c’est déposé automatiquement dans notre stockage.</p>
+  </div>
+
+  <div class="card">
+    <h2>Comment tester “en vrai”</h2>
+    <ul>
+      <li>Choisir un persona dans le menu <strong>Persona</strong> (avatar en haut à droite).</li>
+      <li>Écrire un message ; cocher <strong>Voix</strong> si vous voulez que le bot parle.</li>
+      <li>La réponse texte s’affiche au moment où <strong>l’audio démarre</strong> (synchronisé).</li>
+      <li>Si c’est long à répondre, vous verrez d’abord un <code>…</code> (attente réseau), puis la réponse.</li>
     </ul>
-  </details>
+  </div>
 
-  <h4 style="margin:6px 0 0;">Cycle « je teste → j’applique »</h4>
-  <ol style="margin:0 0 0 18px; display:flex; flex-direction:column; gap:6px;">
-    <li>Éditez dans l’onglet désiré (Monde/Personas/Prompt).</li>
-    <li>Test : basculez de persona si besoin, puis cliquez <strong>Nouvelle conversation</strong>.</li>
-    <li>Validez → copiez-collez dans le fichier source correspondant du dépôt, puis publiez (Pages/Workers).</li>
-  </ol>
+  <div class="card">
+    <h2>En cas de pépin</h2>
+    <ul>
+      <li><span class="bad">Tout devient rouge dans un éditeur</span> : c’est du JSON invalide. Revenez en arrière (Ctrl+Z) ou remettez une version simple.</li>
+      <li>Le bot parle “pareil” pour tous : vérifiez que chaque persona a bien sa <code>bio</code>, ses <code>tics</code>, éventuellement une <code>valueFocus</code>.</li>
+      <li>Pas de son : décochez “Voix”, testez sans audio ; puis recocher. Parfois le navigateur demande une 1<sup>re</sup> interaction (clic) avant de jouer un son.</li>
+    </ul>
+  </div>
 
-  <h4 style="margin:6px 0 0;">Combien de temps ça prend ? (ordre d’idée)</h4>
-  <ul style="margin:0 0 0 18px;">
-    <li><em>Petite retouche</em> (1 persona, correction texte) : 1–5 min.</li>
-    <li><em>Refonte d’un monde</em> : 10–30 min selon la quantité.</li>
-    <li><em>Changement de prompt</em> : 5–15 min (puis copier dans <code>assets/prompt.js</code>).</li>
-  </ul>
-
-  <h4 style="margin:6px 0 0;">Ce qu’il ne faut pas faire</h4>
-  <ul style="margin:0 0 0 18px;">
-    <li>Pas de commentaires <code>// …</code> dans le JSON (utilisez un champ <code>"note": "..."</code> si besoin).</li>
-    <li>Évitez le JSON invalide (guillemets, virgules, crochets).</li>
-    <li>Ne touchez pas aux dossiers <code>assets/vendor/piper-tts-web/…</code> si vous n’êtes pas sûr.</li>
-    <li>Si doute factuel : écrivez « à vérifier » ; ne pas inventer des chiffres.</li>
-  </ul>
-
-  <h4 style="margin:6px 0 0;">Sauvegarde / mémoire</h4>
-  <ul style="margin:0 0 0 18px;">
-    <li><strong>Sauvegarder la session</strong> : envoie les messages (NDJSON) vers l’API (Cloudflare R2) si configurée.</li>
-    <li><strong>Mémoire</strong> (petit résumé) via <code>/api/memory</code> (si 404, la route n’est pas encore déployée).</li>
-  </ul>
-
-  <h4 style="margin:6px 0 0;">Voix (TTS)</h4>
-  <ul style="margin:0 0 0 18px;">
-    <li>Cochez <strong>Voix</strong> pour lire les réponses. Bip test console : <code>btTestBeep()</code>.</li>
-    <li>Les personas peuvent définir <code>piperVoice</code> et <code>speaker</code>.</li>
-    <li>Si blocage, la maquette peut basculer sur un repli (Mintplex ou WebSpeech).</li>
-  </ul>
-
-  <h4 style="margin:6px 0 0;">Publication</h4>
-  <ul style="margin:0 0 0 18px;">
-    <li>GitHub Pages : ~1 min de propagation après un push.</li>
-    <li>Après maj de <code>data/*.json</code> ou <code>assets/prompt.js</code>, faites un rechargement forcé (Ctrl+F5).</li>
-  </ul>
-
-  <h4 style="margin:6px 0 0;">FAQ express</h4>
-  <details>
-    <summary>Je modifie « Prompt (règles) » mais rien ne change</summary>
-    <p>Normal : l’éditeur est informatif. Appliquez vos changements dans <code>./assets/prompt.js</code>, puis publiez.</p>
-  </details>
-  <details>
-    <summary>Je change un persona et le menu se met à jour : c’est durable ?</summary>
-    <p>Les changements sont en mémoire pour le test. Pour les rendre permanents, copiez-collez dans <code>./data/personas.json</code>.</p>
-  </details>
-  <details>
-    <summary>À quoi sert « Nouvelle conversation » ?</summary>
-    <p>À repartir d’un historique vide, en réappliquant le monde/persona courants.</p>
-  </details>
-  <details>
-    <summary>Comment ajouter un avatar ?</summary>
-    <p>Placez une image (idéalement 1024×1024) dans <code>./assets/avatars/</code> et référencez-la via <code>"avatar"</code> dans le persona. L’affichage recadre automatiquement.</p>
-  </details>
-</div>
+  <p class="muted">Quand on est satisfait des essais : on recopie simplement le contenu validé vers les fichiers officiels (<code>data/*.json</code> et <code>assets/prompt.js</code>), puis on publie.</p>
+</body>
+</html>
