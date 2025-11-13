@@ -13,10 +13,10 @@ const worldTa    = document.getElementById("world");
 const modelSel   = document.getElementById("model");
 const ttsChk     = document.getElementById("tts");
 const avatarEl   = document.getElementById("avatar");
+
 const feedbackBox    = document.getElementById("feedbackBox");
 const feedbackBtn    = document.getElementById("feedbackSend");
 const feedbackStatus = document.getElementById("feedbackStatus");
-
 
 // Déverrouille l'audio au premier clic (autoplay policy)
 document.addEventListener("click", () => {
@@ -35,7 +35,12 @@ let sessionId = crypto.randomUUID();
 let MEMORY = { summary: "", notes: [] };
 let HISTORY_BY_PERSONA = {};
 let CURRENT_PID = null;
+
+// Banque de questions (respect/justice/liberté/…)
 let QUESTION_BANK = {};
+
+// Pending bubble (…)
+let pendingEl = null;
 
 // -- TTS guard & watchdog --
 let TTS_LOCK = false;
@@ -44,8 +49,7 @@ const POKET_TIMEOUT_MS = 9000; // 9s puis fallback
 // ==== Cloud TTS (OpenAI) ====
 let USE_CLOUD_TTS = true;                   // TTS prioritaire
 const CLOUD_TTS_MODEL = "gpt-4o-mini-tts";  // rapide/éco
-const SYNC_TEXT_WITH_AUDIO = true;          // <— texte s’affiche quand l’audio démarre
-
+const SYNC_TEXT_WITH_AUDIO = true;          // texte s’affiche quand l’audio démarre
 
 /* ============ Identité ============ */
 function getClassId() {
@@ -84,7 +88,6 @@ function updateAvatar() {
 }
 
 /* ============ TTS local Piper ============ */
-/** Choix par défaut : Poket-Jony (gère 'speaker'), repli Mintplex, puis WebSpeech. */
 let USE_PIPER_POKET    = true;   // support 'speaker'
 let USE_PIPER_MINTPLEX = false;  // repli simple si besoin
 
@@ -224,7 +227,7 @@ function parseNonVerbalsForTTS(text) {
   return { clean: s, sfx };
 }
 
-/* ====== Helpers SFX séquentiels ====== */
+/* ====== Helpers SFX & pending ====== */
 function playOneSfxAndWait(url, maxMs=800){
   return new Promise(resolve=>{
     try{
@@ -244,6 +247,14 @@ async function playSfxThen(keys, profile){
     const url = pickSfxFile(p, k);
     if (url) await playOneSfxAndWait(url, 800);
   }
+}
+function showPending() {
+  const div = document.createElement("div");
+  div.className = "msg bot pending";
+  div.textContent = "…";
+  chatEl.appendChild(div);
+  chatEl.scrollTop = chatEl.scrollHeight;
+  return div;
 }
 
 /* ====== Bip test ====== */
@@ -265,17 +276,17 @@ window.btTestBeep = async function () {
 
 // ====== Cloud TTS (OpenAI via Worker) — avec style & rate ======
 async function speakWithCloudTTS(text, sfxKeys, sfxProfile, onStart){
-  // 1) SFX d’abord (pas de chevauchement)
+  // 1) SFX d’abord
   await playSfxThen(sfxKeys, sfxProfile);
 
-  // 2) Sélection persona -> voix + style + éventuel 'rate'
+  // 2) Persona → voix + style
   const pid     = personaSel.value || Object.keys(PERSONAS)[0];
   const persona = PERSONAS[pid] || {};
   const voiceId = persona.openaiVoice || persona.ttsVoiceId || "alloy";
-  const style   = persona.openaiStyle || ""; // ex. "older Breton sailor, gravelly, calm, 0.9x speed, warm but stoic"
-  const rate    = Number(persona.openaiRate || 1.0); // optionnel (0.85..1.15)
+  const style   = persona.openaiStyle || "";
+  const rate    = Number(persona.openaiRate || 1.0);
 
-  // 3) Appel Worker avec style (le Worker injecte dans l'input)
+  // 3) Appel Worker
   const res = await fetch(`${API_BASE}/tts?voice=${encodeURIComponent(voiceId)}&model=${encodeURIComponent(CLOUD_TTS_MODEL)}&format=mp3`, {
     method: "POST",
     headers: { "Content-Type":"application/json" },
@@ -284,13 +295,12 @@ async function speakWithCloudTTS(text, sfxKeys, sfxProfile, onStart){
   if (!res.ok) throw new Error(`Cloud TTS HTTP ${res.status}`);
   const blob = await res.blob();
 
-  // 4) Lecture audio (playbackRate optionnel)
+  // 4) Lecture audio
   const url = URL.createObjectURL(blob);
   const audio = new Audio(url);
   if (typeof onStart === "function") {
-  audio.addEventListener("playing", () => { try { onStart(); } catch {} }, { once: true });
-}
-
+    audio.addEventListener("playing", () => { try { onStart(); } catch {} }, { once: true });
+  }
   if (rate && isFinite(rate) && rate > 0.5 && rate < 1.5) {
     try { audio.playbackRate = rate; } catch {}
   }
@@ -298,26 +308,24 @@ async function speakWithCloudTTS(text, sfxKeys, sfxProfile, onStart){
   setTimeout(() => { try { URL.revokeObjectURL(url); } catch {} }, 15000);
 }
 
-
 /* ====== Synthèse principale ====== */
 async function speakWithPiper(text, opts = {}) {
   if (!ttsChk?.checked) return;
   const { clean, sfx } = parseNonVerbalsForTTS(text);
   const pid = personaSel.value || Object.keys(PERSONAS)[0];
-  const persona = PERSONAS[pid] || {};
   const profile = getSfxProfile();
 
   // 0) Cloud TTS prioritaire
   if (USE_CLOUD_TTS) {
     try {
-await speakWithCloudTTS(clean, sfx, profile, opts?.onStart);
+      await speakWithCloudTTS(clean, sfx, profile, opts?.onStart);
       return;
     } catch (e) {
       console.warn("[Cloud TTS] échec, on tente Piper :", e);
     }
   }
 
-  // (A) Poket-Jony → support 'speaker' + watchdog + anti-concurrence
+  // (A) Poket-Jony
   if (USE_PIPER_POKET) {
     if (TTS_LOCK) { console.info("[TTS] lock: génération déjà en cours, on ignore."); }
     else {
@@ -325,7 +333,6 @@ await speakWithCloudTTS(clean, sfx, profile, opts?.onStart);
       try {
         await ensurePoketLoaded();
         if (!poketEngine) {
-          // ⚠️ Forcer ONNX WASM (worker), plus robuste que WebGPU sur Pages
           let rt = null;
           if (ttsPoket?.OnnxWebWorkerRuntime) {
             rt = new ttsPoket.OnnxWebWorkerRuntime();
@@ -346,11 +353,12 @@ await speakWithCloudTTS(clean, sfx, profile, opts?.onStart);
         }
 
         if (poketEngine) {
+          const persona = PERSONAS[pid] || {};
           const voice   = await pickVoiceForPersona(pid);
           const spRaw   = persona.speaker ?? persona.piperSpeaker;
           const speaker = Number.isFinite(Number(spRaw)) ? Number(spRaw) : 0;
 
-          const tlabel = `[TTS] generate ${Date.now()}`; // timer unique
+          const tlabel = `[TTS] generate ${Date.now()}`;
           console.time(tlabel);
           const genPromise    = poketEngine.generate(clean, voice, speaker);
           const timeoutPromise= new Promise((_, rej) => setTimeout(() => rej(new Error("TTS timeout")), POKET_TIMEOUT_MS));
@@ -359,17 +367,14 @@ await speakWithCloudTTS(clean, sfx, profile, opts?.onStart);
           finally { try { console.timeEnd(tlabel); } catch {} }
 
           const blob = resp?.file ?? resp?.wav ?? (resp instanceof Blob ? resp : null);
-          console.info("[TTS] voice=", voice, "speaker=", speaker, "blob=", blob && (blob.size + "B / " + (blob.type||"")));
           if (!blob || !blob.size) throw new Error("Piper returned no/empty Blob");
 
-          // SFX AVANT la voix (plus de chevauchement)
           await playSfxThen(sfx, profile);
 
           const audio = document.createElement("audio");
           if (opts && typeof opts.onStart === "function") {
-          audio.addEventListener("playing", () => { try { opts.onStart(); } catch {} }, { once: true });
+            audio.addEventListener("playing", () => { try { opts.onStart(); } catch {} }, { once: true });
           }
-
           audio.autoplay = true;
           const src = document.createElement("source");
           src.type = blob.type || "audio/wav";
@@ -383,7 +388,6 @@ await speakWithCloudTTS(clean, sfx, profile, opts?.onStart);
         }
       } catch (e) {
         console.warn("Poket-Jony a échoué (ou timeout); fallback :", e);
-        // on laisse (B) tenter Mintplex/WebSpeech
       } finally {
         TTS_LOCK = false;
       }
@@ -395,13 +399,7 @@ await speakWithCloudTTS(clean, sfx, profile, opts?.onStart);
     if (!USE_PIPER_MINTPLEX) throw new Error("Mintplex désactivé");
     await ensureMintplexLoaded();
     const voiceId = TTS_VOICE_CACHE[pid] || (TTS_VOICE_CACHE[pid] = await pickVoiceForPersona(pid));
-    if (Number.isFinite(Number(persona.speaker ?? persona.piperSpeaker))) {
-      console.info("[TTS] Note: Mintplex ne gère pas 'speaker', il est ignoré.");
-    }
-
-    // SFX AVANT la voix
     await playSfxThen(sfx, profile);
-
     const wav = await ttsMint.predict({ text: clean, voiceId });
     const audio = new Audio(URL.createObjectURL(wav));
     await audio.play();
@@ -409,26 +407,12 @@ await speakWithCloudTTS(clean, sfx, profile, opts?.onStart);
   } catch (e) {
     // (C) Web Speech API
     if ("speechSynthesis" in window) {
-      // SFX AVANT
       await playSfxThen(sfx, profile);
-
       const u = new SpeechSynthesisUtterance(clean);
       u.lang = "fr-FR";
       window.speechSynthesis.cancel(); window.speechSynthesis.speak(u);
     } else {
       console.warn("Aucune synthèse disponible :", e);
-    }
-  }
-}
-
-/* ====== SFX playback simple (encore utilisé par l'ancien code) ====== */
-function playSfxList(keys, profile) {
-  if (!keys?.length) return;
-  const p = profile || "default";
-  for (const k of keys) {
-    const url = pickSfxFile(p, k);
-    if (url) {
-      try { (AUDIO_CACHE[url] || new Audio(url)).play?.().catch(()=>{}); } catch {}
     }
   }
 }
@@ -501,7 +485,16 @@ async function loadData() {
   DEFAULT_WORLD = await fetch("./data/world.json").then(r => r.json());
   worldTa.value = JSON.stringify(DEFAULT_WORLD, null, 2);
 
-  // ÉDITEURS (bas) — on remplit pour les tests à chaud
+  // Banque de questions (avec override localStorage si présent)
+  try {
+    QUESTION_BANK = await fetch("./data/questions.json").then(r => r.ok ? r.json() : ({}));
+  } catch { QUESTION_BANK = {}; }
+  try {
+    const saved = localStorage.getItem("bt_questions");
+    if (saved) QUESTION_BANK = JSON.parse(saved);
+  } catch {}
+
+  // ÉDITEURS (bas) — remplissage à chaud
   try {
     const personasEd = document.getElementById("personasEditor");
     if (personasEd) {
@@ -525,15 +518,29 @@ async function loadData() {
     const promptEd = document.getElementById("promptEditor");
     if (promptEd) promptEd.value = await fetch("./assets/prompt.js").then(r => r.text());
   } catch {}
+  try {
+    const qEd = document.getElementById("questionsEditor");
+    if (qEd) {
+      qEd.value = JSON.stringify(QUESTION_BANK, null, 2);
+      qEd.addEventListener("change", () => {
+        try {
+          const obj = JSON.parse(qEd.value || "{}");
+          QUESTION_BANK = obj;
+          localStorage.setItem("bt_questions", JSON.stringify(obj));
+          qEd.style.outline = "2px solid #2ecc71"; setTimeout(()=>qEd.style.outline="",700);
+        } catch (e) {
+          qEd.style.outline = "2px solid #e74c3c";
+        }
+      });
+    }
+  } catch {}
 
-  // Historique local
- // Historique local PAR PERSONA
-try {
-  HISTORY_BY_PERSONA = JSON.parse(localStorage.getItem("bt_hist_by_pid") || "{}");
-} catch { HISTORY_BY_PERSONA = {}; }
-CURRENT_PID = personaSel.value || Object.keys(PERSONAS)[0];
-renderHistoryFor(CURRENT_PID);
-
+  // Historique local PAR PERSONA
+  try {
+    HISTORY_BY_PERSONA = JSON.parse(localStorage.getItem("bt_hist_by_pid") || "{}");
+  } catch { HISTORY_BY_PERSONA = {}; }
+  CURRENT_PID = personaSel.value || Object.keys(PERSONAS)[0];
+  renderHistoryFor(CURRENT_PID);
 
   // Mémoire R2 (optionnelle)
   try { if (HAS_MEMORY) await loadMemory(); } catch {}
@@ -569,6 +576,18 @@ function updateMemory(userText, botText) {
   if (MEMORY.summary.length > 800) MEMORY.summary = MEMORY.summary.slice(-800);
 }
 
+/* ============ Scaffolding doux (valeur → graine) ============ */
+function inferValueFocus(persona) {
+  if (persona?.valueFocus) return persona.valueFocus;
+  const g = (persona?.group || "").toLowerCase();
+  if (g.includes("liberté")) return "liberte";
+  if (g.includes("chaman")) return "respect";
+  if (g.includes("creuser") || g.includes("puiser")) return "justice";
+  if (g.includes("rebelle")) return "justice";
+  if (g.includes("tradition")) return "responsabilite";
+  return null;
+}
+
 /* ============ Chat UI ============ */
 function addMsg(role, text) {
   const div = document.createElement("div");
@@ -579,10 +598,7 @@ function addMsg(role, text) {
     div.textContent = "…"; // placeholder
     chatEl.appendChild(div);
     chatEl.scrollTop = chatEl.scrollHeight;
-
-    speakWithPiper(text, {
-      onStart: () => { div.textContent = stripNvForDisplay(text); }
-    });
+    speakWithPiper(text, { onStart: () => { div.textContent = stripNvForDisplay(text); } });
   } else {
     const display = role === "assistant" ? stripNvForDisplay(text) : text;
     div.textContent = display;
@@ -614,21 +630,17 @@ function renderHistoryFor(pid) {
 }
 
 personaSel?.addEventListener("change", () => {
-  // 1) sauvegarde l'historique du persona courant
-const prevPid = CURRENT_PID;
+  const prevPid = CURRENT_PID;
   HISTORY_BY_PERSONA[prevPid] = history.slice();
   localStorage.setItem("bt_hist_by_pid", JSON.stringify(HISTORY_BY_PERSONA));
 
-  // 2) switch persona courant + avatar/SFX
   CURRENT_PID = personaSel.value || Object.keys(PERSONAS)[0];
   updateAvatar();
   try { preloadSfxProfile(getSfxProfile()); } catch {}
 
-  // 3) recharge l'historique du nouveau persona sans TTS
   renderHistoryFor(CURRENT_PID);
   inputEl?.focus();
 });
-
 
 function resetConversation() {
   if ("speechSynthesis" in window) window.speechSynthesis.cancel();
@@ -641,7 +653,6 @@ function resetConversation() {
   worldTa.value = JSON.stringify(DEFAULT_WORLD, null, 2);
   inputEl.value = ""; inputEl.focus();
 }
-
 
 async function sendMsg() {
   persistIds();
@@ -656,42 +667,64 @@ async function sendMsg() {
   const persona = PERSONAS[pid] || PERSONAS[Object.keys(PERSONAS)[0]];
   let world; try { world = JSON.parse(worldTa.value || "{}"); } catch { world = DEFAULT_WORLD; }
 
-const system = makeSystem(persona, { ...world, memory: MEMORY });
-const chosenModel = modelSel?.value || "gpt-4o-mini";
+  // Focus doux + graine
+  const valueFocus = inferValueFocus(persona);
+  let seedQuestion = null;
+  if (valueFocus && QUESTION_BANK[valueFocus] && Array.isArray(QUESTION_BANK[valueFocus].initial)) {
+    const pool = QUESTION_BANK[valueFocus].initial;
+    if (pool.length) seedQuestion = pool[Math.floor(Math.random() * pool.length)];
+  }
+  const controls = {
+    scaffoldIntensity: 1,     // 0 = libre, 1 = doux, 2 = plus guidé
+    maxRelances: 1,           // 0..2
+    showStructure: false,     // jamais de plan visible
+    allowHedges: true         // amorces naturelles autorisées ("mmh, je vois…")
+  };
 
-let reply = "(pas de réponse)";
-sendBtn.disabled = true;               // <— DÉSACTIVE avant réseau
-try {
+  // System prompt
+  const system = makeSystem(persona, { ...world, memory: MEMORY, valueFocus, controls, seedQuestion });
+  const chosenModel = modelSel?.value || "gpt-4o-mini";
+
+  let reply = "(pas de réponse)";
+
+  // UI: pending + disable
+  pendingEl = showPending();
+  sendBtn.disabled = true;
+
   try {
-    const r = await fetch(`${API_BASE}/chat`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ messages: history, system, persona, world, model: chosenModel })
-    });
-    const data = await r.json();
-    if (!r.ok || data.error) throw new Error(data.error || "API error");
-    reply = data.reply || reply;
-  } catch {
     try {
-      const r2 = await fetch(`${API_BASE}/chat`, {
+      const r = await fetch(`${API_BASE}/chat`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: history, system, persona, world, model: "gpt-4o-mini" })
+        body: JSON.stringify({ messages: history, system, persona, world, model: chosenModel })
       });
-      const d2 = await r2.json();
-      reply = d2.reply || reply;
-    } catch {}
+      const data = await r.json();
+      if (!r.ok || data.error) throw new Error(data.error || "API error");
+      reply = data.reply || reply;
+    } catch {
+      try {
+        const r2 = await fetch(`${API_BASE}/chat`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ messages: history, system, persona, world, model: "gpt-4o-mini" })
+        });
+        const d2 = await r2.json();
+        reply = d2.reply || reply;
+      } catch {}
+    }
+
+    // Retire le pending avant d'ajouter la réponse
+    if (pendingEl) { pendingEl.remove(); pendingEl = null; }
+
+    history.push({ role:"assistant", content: reply });
+    addMsg("assistant", reply);
+
+    updateMemory(content, reply);
+    saveMemory(); // async
+  } finally {
+    if (pendingEl) { pendingEl.remove(); pendingEl = null; }
+    sendBtn.disabled = false;
   }
-
-  history.push({ role:"assistant", content: reply });
-  addMsg("assistant", reply);
-
-  updateMemory(content, reply);
-  saveMemory(); // async
-} finally {
-  sendBtn.disabled = false;            // <— RÉACTIVE quoi qu’il arrive
-}
-
 }
 
 async function saveTranscript() {
@@ -754,5 +787,5 @@ resetBtn && (resetBtn.onclick = resetConversation);
 feedbackBtn && (feedbackBtn.onclick = sendFeedback);
 
 inputEl?.addEventListener("keydown", (e) => {
-  if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMsg(); }
+  if (e.key === "Enter" && !e.shiftKey && !sendBtn.disabled) { e.preventDefault(); sendMsg(); }
 });
