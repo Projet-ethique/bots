@@ -20,7 +20,10 @@
     "avatar": "./assets/avatars/Gaspard_profile.png",
     "piperVoice": "fr_FR-mls-medium",
     "speaker": "5",
-    "openaiVoice": "verse"
+    "openaiVoice": "verse",
+     "openaiStyle": "older Breton sailor; slightly gravelly, low pitch, calm and steady; gentle warmth; clear French; avoid shouting; ~0.9x speed",
+  "openaiRate": 0.9
+
   },
   {
     "id": "naé-cham",
@@ -42,7 +45,10 @@
     "avatar": "./assets/avatars/nae_profile.png",
     "piperVoice": "fr_FR/upmc/medium",
     "speaker": "0",
-    "openaiVoice": "sage"
+    "openaiVoice": "sage",
+     "openaiStyle": "young woman; light and curious; soft airiness; warm and encouraging tone; clear French articulation; normal speed",
+  "openaiRate": 1.0
+
   },
   {
     "id": "mika-cp",
@@ -64,7 +70,10 @@
     "avatar": "./assets/avatars/mika_profile.png",
     "piperVoice": "fr_FR/mls/medium",
     "speaker": "123",
-    "openaiVoice": "verse"
+    "openaiVoice": "verse",
+     "openaiStyle": "adult male technician; practical and friendly; confident but not loud; neutral French; normal pace",
+  "openaiRate": 1.0
+
   },
   {
     "id": "lia-ln",
@@ -86,7 +95,10 @@
     "avatar": "./assets/avatars/lia_profile.png",
     "piperVoice": "fr_FR/mls/medium",
     "speaker": "107",
-    "openaiVoice": "nova"
+    "openaiVoice": "nova", 
+    "openaiStyle": "mature woman; warm and composed; protective and persuasive tone; French with clear diction; slightly slower than normal",
+  "openaiRate": 0.95
+
   },
   {
     "id": "téo-pct",
@@ -108,7 +120,10 @@
     "avatar": "./assets/avatars/teo_profile.png",
     "piperVoice": "fr_FR/upmc/medium",
     "speaker": "1",
-    "openaiVoice": "onyx"
+    "openaiVoice": "onyx", 
+    "openaiStyle": "adult male; coastal vibe; straightforward and grounded; friendly cadence; normal speed",
+  "openaiRate": 1.0
+
   },
   {
     "id": "bragi-rt",
@@ -130,6 +145,9 @@
     "avatar": "./assets/avatars/bragi_profile.png",
     "piperVoice": "fr_FR/mls/medium",
     "speaker": "77",
-    "openaiVoice": "verse"
+    "openaiVoice": "verse", 
+    "openaiStyle": "adult male; slightly gruff and dry; skeptical undertone but not rude; clipped phrases; normal-to-slow pace",
+  "openaiRate": 0.95
+
   }
 ]
