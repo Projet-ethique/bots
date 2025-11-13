@@ -20,7 +20,7 @@
     "avatar": "./assets/avatars/Gaspard_profile.png",
     "piperVoice": "fr_FR-mls-medium",
     "speaker": "5",
-    "openaiVoice": "sage"
+    "openaiVoice": "verse"
   },
   {
     "id": "naé-cham",
@@ -42,7 +42,7 @@
     "avatar": "./assets/avatars/nae_profile.png",
     "piperVoice": "fr_FR/upmc/medium",
     "speaker": "0",
-    "openaiVoice": "shimmer"
+    "openaiVoice": "sage"
   },
   {
     "id": "mika-cp",
@@ -64,7 +64,7 @@
     "avatar": "./assets/avatars/mika_profile.png",
     "piperVoice": "fr_FR/mls/medium",
     "speaker": "123",
-    "openaiVoice": "alloy"
+    "openaiVoice": "verse"
   },
   {
     "id": "lia-ln",
@@ -86,7 +86,7 @@
     "avatar": "./assets/avatars/lia_profile.png",
     "piperVoice": "fr_FR/mls/medium",
     "speaker": "107",
-    "openaiVoice": "coral"
+    "openaiVoice": "nova"
   },
   {
     "id": "téo-pct",
@@ -108,7 +108,7 @@
     "avatar": "./assets/avatars/teo_profile.png",
     "piperVoice": "fr_FR/upmc/medium",
     "speaker": "1",
-    "openaiVoice": "verse"
+    "openaiVoice": "onyx"
   },
   {
     "id": "bragi-rt",
@@ -130,6 +130,6 @@
     "avatar": "./assets/avatars/bragi_profile.png",
     "piperVoice": "fr_FR/mls/medium",
     "speaker": "77",
-    "openaiVoice": "sage"
+    "openaiVoice": "verse"
   }
 ]
