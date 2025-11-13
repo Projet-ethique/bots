@@ -1,4 +1,5 @@
 // worker-belles-terres/src/index.js
+
 export default {
   async fetch(req, env) {
     const url = new URL(req.url);
@@ -49,7 +50,9 @@ export default {
         const obj = await env.LOGS_BUCKET.get(key);
         if (!obj) return json({ summary:"", notes:[] }, 200, cors);
         const txt = await obj.text();
-        return new Response(txt, { status: 200, headers: cors });
+        // renvoyer le JSON tel quel
+        const h = { ...cors }; h["Content-Type"] = "application/json";
+        return new Response(txt, { status: 200, headers: h });
       }
       if (url.pathname === "/api/memory" && req.method === "POST") {
         if (!env.LOGS_BUCKET) return json({ error: "R2 binding LOGS_BUCKET manquant" }, 501, cors);
@@ -58,6 +61,11 @@ export default {
         const key = `mem/${classId}/${userId}.json`;
         await env.LOGS_BUCKET.put(key, JSON.stringify(memory), { httpMetadata: { contentType:"application/json" } });
         return json({ ok:true, key }, 200, cors);
+      }
+
+      // ---- TTS OpenAI (gpt-4o-mini-tts) + cache R2 ----
+      if (url.pathname === "/api/tts" && req.method === "POST") {
+        return handleTts(req, env, origin);
       }
 
       if (url.pathname === "/" && req.method === "GET") return new Response("OK", { headers: cors });
@@ -80,4 +88,68 @@ function makeCors(origin) {
 }
 function json(obj, status = 200, headers = {}) {
   return new Response(JSON.stringify(obj), { status, headers });
+}
+
+// ---------- /api/tts ----------
+async function sha256Hex(str) {
+  const data = new TextEncoder().encode(str);
+  const hash = await crypto.subtle.digest("SHA-256", data);
+  return [...new Uint8Array(hash)].map(b => b.toString(16).padStart(2, "0")).join("");
+}
+async function handleTts(req, env, origin) {
+  const url = new URL(req.url);
+  const model  = url.searchParams.get("model")  || "gpt-4o-mini-tts";
+  const voice  = url.searchParams.get("voice")  || "alloy";
+  const format = url.searchParams.get("format") || "mp3"; // mp3/wav/ogg/opus
+  const { text = "" } = await req.json().catch(() => ({}));
+  if (!text.trim()) return json({ error:"Missing text" }, 400, makeCors(origin));
+  if (!env.OPENAI_API_KEY) return json({ error:"OPENAI_API_KEY missing" }, 500, makeCors(origin));
+
+  // headers audio avec CORS
+  const audioHeaders = {
+    "Access-Control-Allow-Origin": origin || "*",
+    "Access-Control-Allow-Methods": "POST, OPTIONS, GET",
+    "Access-Control-Allow-Headers": "Content-Type",
+    "Cache-Control": "no-store",
+    "Content-Type": (format === "mp3" ? "audio/mpeg" : `audio/${format}`)
+  };
+
+  // cache R2 (optionnel)
+  const keyHash = await sha256Hex(`${model}|${voice}|${format}|${text}`);
+  const r2Key = `tts-cache/openai/${model}/${voice}/${keyHash}.${format}`;
+
+  try {
+    const cached = await env.LOGS_BUCKET?.get(r2Key);
+    if (cached) {
+      return new Response(cached.body, { headers: audioHeaders, status: 200 });
+    }
+  } catch {}
+
+  // appel OpenAI
+  const upstream = await fetch("https://api.openai.com/v1/audio/speech", {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${env.OPENAI_API_KEY}`,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      model,
+      voice,
+      input: text,
+      format // "mp3" recommandé
+    })
+  });
+  if (!upstream.ok) {
+    const msg = await upstream.text().catch(()=> "upstream error");
+    return json({ error: msg }, 502, makeCors(origin));
+  }
+
+  // buffer pour cache + retour
+  const audioBuf = await upstream.arrayBuffer();
+  try {
+    await env.LOGS_BUCKET?.put(r2Key, audioBuf, {
+      httpMetadata: { contentType: audioHeaders["Content-Type"] }
+    });
+  } catch {}
+  return new Response(audioBuf, { headers: audioHeaders, status: 200 });
 }
