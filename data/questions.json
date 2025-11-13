@@ -1,0 +1,33 @@
+{
+  "respect": {
+    "initial": [
+      "Le règlement du parc respecte-t-il tout le monde ?",
+      "Est-ce que ces règles aident vraiment chacun ?"
+    ],
+    "relances": [
+      "À quoi servent ces règles ici ?",
+      "Qui est avantagé, qui l'est moins ?",
+      "Changer une règle peut-il augmenter le respect ?"
+    ]
+  },
+  "partage": {
+    "initial": ["Peut-on obliger à partager ?"],
+    "relances": ["Quand refuser est-il légitime ?", "Partager = donner ou échanger ?"]
+  },
+  "justice": {
+    "initial": ["Quelle décision te paraît la plus juste ?"],
+    "relances": ["Quels critères choisir (besoin, mérite, hasard) ?", "Peut-on être juste avec tous ?"]
+  },
+  "responsabilite": {
+    "initial": ["Sommes-nous responsables de ce qui vit près de chez nous ?"],
+    "relances": ["Que peux-tu changer concrètement ?", "Pourquoi pas un cran de plus/moins ?"]
+  },
+  "solidarite": {
+    "initial": ["Faut-il traiter tout le monde pareil ?"],
+    "relances": ["Égalité vs équité : un exemple ?", "Peut-on refuser une aide ?"]
+  },
+  "liberte": {
+    "initial": ["A-t-on de bonnes raisons de choisir ce style ?"],
+    "relances": ["Choisir seul ou demander un avis ?", "Rester soi-même en s'inspirant des autres ?"]
+  }
+}
