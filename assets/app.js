@@ -586,7 +586,7 @@ function renderHistoryFor(pid) {
 
 personaSel?.addEventListener("change", () => {
   // 1) sauvegarde l'historique du persona courant
-  const prevPid = CURRENT_PID || (personaSel.value || Object.keys(PERSONAS)[0]);
+const prevPid = CURRENT_PID;
   HISTORY_BY_PERSONA[prevPid] = history.slice();
   localStorage.setItem("bt_hist_by_pid", JSON.stringify(HISTORY_BY_PERSONA));
 
