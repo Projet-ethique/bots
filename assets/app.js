@@ -29,6 +29,9 @@ let DEFAULT_WORLD = {};
 let history = [];
 let sessionId = crypto.randomUUID();
 let MEMORY = { summary: "", notes: [] };
+let HISTORY_BY_PERSONA = {};
+let CURRENT_PID = null;
+
 // -- TTS guard & watchdog --
 let TTS_LOCK = false;
 const POKET_TIMEOUT_MS = 9000; // 9s puis fallback
@@ -509,13 +512,13 @@ async function loadData() {
   } catch {}
 
   // Historique local
-  try {
-    const prev = JSON.parse(localStorage.getItem("bt_demo_history") || "[]");
-    if (prev.length) {
-      history = prev;
-      for (const m of prev) addMsg(m.role, m.content);
-    }
-  } catch {}
+ // Historique local PAR PERSONA
+try {
+  HISTORY_BY_PERSONA = JSON.parse(localStorage.getItem("bt_hist_by_pid") || "{}");
+} catch { HISTORY_BY_PERSONA = {}; }
+CURRENT_PID = personaSel.value || Object.keys(PERSONAS)[0];
+renderHistoryFor(CURRENT_PID);
+
 
   // Mémoire R2 (optionnelle)
   try { if (HAS_MEMORY) await loadMemory(); } catch {}
@@ -560,23 +563,56 @@ function addMsg(role, text) {
   chatEl.appendChild(div);
   chatEl.scrollTop = chatEl.scrollHeight;
   if (role === "assistant") speakWithPiper(text);
-  localStorage.setItem("bt_demo_history", JSON.stringify(history));
+const pidForSave = CURRENT_PID || (personaSel?.value || "default");
+HISTORY_BY_PERSONA[pidForSave] = history.slice();
+localStorage.setItem("bt_hist_by_pid", JSON.stringify(HISTORY_BY_PERSONA));
+}
+function addMsgSilent(role, text) {
+  const div = document.createElement("div");
+  div.className = "msg " + (role === "user" ? "user" : "bot");
+  const display = role === "assistant" ? stripNvForDisplay(text) : text;
+  div.textContent = display;
+  chatEl.appendChild(div);
+  chatEl.scrollTop = chatEl.scrollHeight;
+}
+
+function renderHistoryFor(pid) {
+  chatEl.innerHTML = "";
+  history = (HISTORY_BY_PERSONA[pid] && Array.isArray(HISTORY_BY_PERSONA[pid]))
+    ? HISTORY_BY_PERSONA[pid].slice()
+    : [];
+  for (const m of history) addMsgSilent(m.role, m.content);
 }
 
 personaSel?.addEventListener("change", () => {
-  resetConversation();
+  // 1) sauvegarde l'historique du persona courant
+  const prevPid = CURRENT_PID || (personaSel.value || Object.keys(PERSONAS)[0]);
+  HISTORY_BY_PERSONA[prevPid] = history.slice();
+  localStorage.setItem("bt_hist_by_pid", JSON.stringify(HISTORY_BY_PERSONA));
+
+  // 2) switch persona courant + avatar/SFX
+  CURRENT_PID = personaSel.value || Object.keys(PERSONAS)[0];
   updateAvatar();
   try { preloadSfxProfile(getSfxProfile()); } catch {}
+
+  // 3) recharge l'historique du nouveau persona sans TTS
+  renderHistoryFor(CURRENT_PID);
+  inputEl?.focus();
 });
+
 
 function resetConversation() {
   if ("speechSynthesis" in window) window.speechSynthesis.cancel();
-  history = []; chatEl.innerHTML = "";
-  localStorage.removeItem("bt_demo_history");
+  history = [];
+  const pid = CURRENT_PID || (personaSel?.value || "default");
+  HISTORY_BY_PERSONA[pid] = [];
+  localStorage.setItem("bt_hist_by_pid", JSON.stringify(HISTORY_BY_PERSONA));
+  chatEl.innerHTML = "";
   sessionId = crypto.randomUUID();
   worldTa.value = JSON.stringify(DEFAULT_WORLD, null, 2);
   inputEl.value = ""; inputEl.focus();
 }
+
 
 async function sendMsg() {
   persistIds();
@@ -591,7 +627,7 @@ async function sendMsg() {
   const persona = PERSONAS[pid] || PERSONAS[Object.keys(PERSONAS)[0]];
   let world; try { world = JSON.parse(worldTa.value || "{}"); } catch { world = DEFAULT_WORLD; }
 
-  const system = makeSystem(persona, { world, memory: MEMORY });
+const system = makeSystem(persona, { ...world, memory: MEMORY });
   const chosenModel = modelSel?.value || "gpt-4o-mini";
 
   let reply = "(pas de réponse)";
