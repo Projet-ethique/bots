@@ -55,6 +55,11 @@ Exemples (a imiter, pas a copier) :
   const constraints= Array.isArray(world.constraints) ? world.constraints.join(" ; ") : "";
   const dilemmas   = Array.isArray(world.dilemmas)    ? world.dilemmas.join(" ; ") : "";
   const factsBank  = Array.isArray(world.factsBank)   ? world.factsBank.join(" | ") : "";
+  const factionDetail = (world.factionsProfiles || [])
+  .slice(0, 5) // max 5 factions
+  .map(f => `- ${f.displayName}: ${String(f.summary).slice(0, 160)}…`)
+  .join('\n');
+
   const events     = Array.isArray(world.recentEvents)? world.recentEvents.join(" | ") : "";
 
   const WORLDC = `
