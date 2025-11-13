@@ -253,31 +253,37 @@ window.btTestBeep = async function () {
   } catch (e) { console.warn("[TTS] beep failed:", e); }
 };
 
-/* ====== Cloud TTS (OpenAI via Worker) ====== */
+// ====== Cloud TTS (OpenAI via Worker) — avec style & rate ======
 async function speakWithCloudTTS(text, sfxKeys, sfxProfile){
-  // 1) SFX d'abord
+  // 1) SFX d’abord (pas de chevauchement)
   await playSfxThen(sfxKeys, sfxProfile);
 
-  // 2) choisir la voix (persona.openaiVoice || "alloy")
-  const pid = personaSel.value || Object.keys(PERSONAS)[0];
+  // 2) Sélection persona -> voix + style + éventuel 'rate'
+  const pid     = personaSel.value || Object.keys(PERSONAS)[0];
   const persona = PERSONAS[pid] || {};
   const voiceId = persona.openaiVoice || persona.ttsVoiceId || "alloy";
+  const style   = persona.openaiStyle || ""; // ex. "older Breton sailor, gravelly, calm, 0.9x speed, warm but stoic"
+  const rate    = Number(persona.openaiRate || 1.0); // optionnel (0.85..1.15)
 
-  // 3) appel Worker
+  // 3) Appel Worker avec style (le Worker injecte dans l'input)
   const res = await fetch(`${API_BASE}/tts?voice=${encodeURIComponent(voiceId)}&model=${encodeURIComponent(CLOUD_TTS_MODEL)}&format=mp3`, {
     method: "POST",
     headers: { "Content-Type":"application/json" },
-    body: JSON.stringify({ text })
+    body: JSON.stringify({ text, style })
   });
   if (!res.ok) throw new Error(`Cloud TTS HTTP ${res.status}`);
   const blob = await res.blob();
 
-  // 4) jouer l'audio
+  // 4) Lecture audio (playbackRate optionnel)
   const url = URL.createObjectURL(blob);
   const audio = new Audio(url);
+  if (rate && isFinite(rate) && rate > 0.5 && rate < 1.5) {
+    try { audio.playbackRate = rate; } catch {}
+  }
   await audio.play();
   setTimeout(() => { try { URL.revokeObjectURL(url); } catch {} }, 15000);
 }
+
 
 /* ====== Synthèse principale ====== */
 async function speakWithPiper(text) {
