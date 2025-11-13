@@ -99,10 +99,12 @@
     <!-- Panneau éditeurs (bas) -->
     <section class="panel" id="editors">
       <div class="tabs">
-        <button class="tab-btn active" data-tab="world-tab">Monde</button>
-        <button class="tab-btn" data-tab="personas-tab">Personas.json</button>
-        <button class="tab-btn" data-tab="prompt-tab">Prompt (règles)</button>
-      </div>
+  <button class="tab-btn active" data-tab="world-tab">Monde</button>
+  <button class="tab-btn" data-tab="personas-tab">Personas.json</button>
+  <button class="tab-btn" data-tab="prompt-tab">Prompt (règles)</button>
+  <button class="tab-btn" data-tab="help-tab">Explications</button>
+</div>
+
 
       <!-- Monde -->
       <div class="tab active" id="world-tab">
@@ -127,15 +129,17 @@
           Règles système/immersion. Fichier source : <code>./assets/prompt.js</code>. (Pour impacter le runtime, il faudra faire lire ce contenu par <code>app.js</code>.)
         </p>
       </div>
-    </section>
-  </main>
-<button class="tab-btn" data-tab="help-tab">Explications</button>
+      <!-- Explications -->
 <div class="tab" id="help-tab">
   <div id="helpContent" class="doc" style="min-height:180px; border:1px dashed #ccc6; border-radius:8px; padding:8px;">
     <em class="muted">Chargera le guide depuis <code>./docs/README.html</code> au premier clic…</em>
   </div>
   <p class="muted hint">Astuce : éditez librement <code>docs/README.html</code> (HTML simple).</p>
 </div>
+
+    </section>
+  </main>
+
 
   <!-- Overlay de boot (préchargement immersif) -->
   <div id="boot" style="position:fixed;inset:0;display:none;place-items:center;background:color-mix(in srgb, Canvas, CanvasText 5%);z-index:9999">
