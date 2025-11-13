@@ -13,6 +13,10 @@ const worldTa    = document.getElementById("world");
 const modelSel   = document.getElementById("model");
 const ttsChk     = document.getElementById("tts");
 const avatarEl   = document.getElementById("avatar");
+const feedbackBox    = document.getElementById("feedbackBox");
+const feedbackBtn    = document.getElementById("feedbackSend");
+const feedbackStatus = document.getElementById("feedbackStatus");
+
 
 // Déverrouille l'audio au premier clic (autoplay policy)
 document.addEventListener("click", () => {
@@ -39,6 +43,8 @@ const POKET_TIMEOUT_MS = 9000; // 9s puis fallback
 // ==== Cloud TTS (OpenAI) ====
 let USE_CLOUD_TTS = true;                   // TTS prioritaire
 const CLOUD_TTS_MODEL = "gpt-4o-mini-tts";  // rapide/éco
+const SYNC_TEXT_WITH_AUDIO = true;          // <— texte s’affiche quand l’audio démarre
+
 
 /* ============ Identité ============ */
 function getClassId() {
@@ -257,7 +263,7 @@ window.btTestBeep = async function () {
 };
 
 // ====== Cloud TTS (OpenAI via Worker) — avec style & rate ======
-async function speakWithCloudTTS(text, sfxKeys, sfxProfile){
+async function speakWithCloudTTS(text, sfxKeys, sfxProfile, onStart){
   // 1) SFX d’abord (pas de chevauchement)
   await playSfxThen(sfxKeys, sfxProfile);
 
@@ -280,6 +286,10 @@ async function speakWithCloudTTS(text, sfxKeys, sfxProfile){
   // 4) Lecture audio (playbackRate optionnel)
   const url = URL.createObjectURL(blob);
   const audio = new Audio(url);
+  if (typeof onStart === "function") {
+  audio.addEventListener("playing", () => { try { onStart(); } catch {} }, { once: true });
+}
+
   if (rate && isFinite(rate) && rate > 0.5 && rate < 1.5) {
     try { audio.playbackRate = rate; } catch {}
   }
@@ -289,7 +299,7 @@ async function speakWithCloudTTS(text, sfxKeys, sfxProfile){
 
 
 /* ====== Synthèse principale ====== */
-async function speakWithPiper(text) {
+async function speakWithPiper(text, opts = {}) {
   if (!ttsChk?.checked) return;
   const { clean, sfx } = parseNonVerbalsForTTS(text);
   const pid = personaSel.value || Object.keys(PERSONAS)[0];
@@ -299,7 +309,7 @@ async function speakWithPiper(text) {
   // 0) Cloud TTS prioritaire
   if (USE_CLOUD_TTS) {
     try {
-      await speakWithCloudTTS(clean, sfx, profile);
+await speakWithCloudTTS(clean, sfx, profile, opts?.onStart);
       return;
     } catch (e) {
       console.warn("[Cloud TTS] échec, on tente Piper :", e);
@@ -355,6 +365,10 @@ async function speakWithPiper(text) {
           await playSfxThen(sfx, profile);
 
           const audio = document.createElement("audio");
+          if (opts && typeof opts.onStart === "function") {
+          audio.addEventListener("playing", () => { try { opts.onStart(); } catch {} }, { once: true });
+          }
+
           audio.autoplay = true;
           const src = document.createElement("source");
           src.type = blob.type || "audio/wav";
@@ -558,15 +572,29 @@ function updateMemory(userText, botText) {
 function addMsg(role, text) {
   const div = document.createElement("div");
   div.className = "msg " + (role === "user" ? "user" : "bot");
-  const display = role === "assistant" ? stripNvForDisplay(text) : text;
-  div.textContent = display;
-  chatEl.appendChild(div);
-  chatEl.scrollTop = chatEl.scrollHeight;
-  if (role === "assistant") speakWithPiper(text);
-const pidForSave = CURRENT_PID || (personaSel?.value || "default");
-HISTORY_BY_PERSONA[pidForSave] = history.slice();
-localStorage.setItem("bt_hist_by_pid", JSON.stringify(HISTORY_BY_PERSONA));
+
+  // Si assistant + synchro activée + TTS actif → texte révélé au démarrage de l'audio
+  if (role === "assistant" && SYNC_TEXT_WITH_AUDIO && ttsChk?.checked) {
+    div.textContent = "…"; // placeholder
+    chatEl.appendChild(div);
+    chatEl.scrollTop = chatEl.scrollHeight;
+
+    speakWithPiper(text, {
+      onStart: () => { div.textContent = stripNvForDisplay(text); }
+    });
+  } else {
+    const display = role === "assistant" ? stripNvForDisplay(text) : text;
+    div.textContent = display;
+    chatEl.appendChild(div);
+    chatEl.scrollTop = chatEl.scrollHeight;
+    if (role === "assistant") speakWithPiper(text);
+  }
+
+  const pidForSave = CURRENT_PID || (personaSel?.value || "default");
+  HISTORY_BY_PERSONA[pidForSave] = history.slice();
+  localStorage.setItem("bt_hist_by_pid", JSON.stringify(HISTORY_BY_PERSONA));
 }
+
 function addMsgSilent(role, text) {
   const div = document.createElement("div");
   div.className = "msg " + (role === "user" ? "user" : "bot");
@@ -674,12 +702,50 @@ async function saveTranscript() {
   });
   alert("Session enregistrée (R2).");
 }
+async function sendFeedback() {
+  const txt = feedbackBox?.value?.trim();
+  if (!txt) { if (feedbackStatus) feedbackStatus.textContent = "Écris un commentaire d'abord."; return; }
+
+  const payload = {
+    sessionId: `feedback-${crypto.randomUUID()}`,
+    transcript: JSON.stringify({
+      t: new Date().toISOString(),
+      classId: getClassId(),
+      userId: getUserId(),
+      personaId: personaSel.value || CURRENT_PID || (Object.keys(PERSONAS)[0] || "default"),
+      text: txt,
+      ua: navigator.userAgent
+    }) + "\n",
+    classId: getClassId(),
+    userId: getUserId(),
+    contentType: "application/json"
+  };
+
+  try {
+    const r = await fetch(`${API_BASE}/save`, {
+      method: "POST",
+      headers: { "Content-Type":"application/json" },
+      body: JSON.stringify(payload)
+    });
+    if (r.ok) {
+      if (feedbackStatus) feedbackStatus.textContent = "Envoyé ✓";
+      if (feedbackBox) feedbackBox.value = "";
+    } else {
+      if (feedbackStatus) feedbackStatus.textContent = "Erreur d’envoi";
+    }
+  } catch {
+    if (feedbackStatus) feedbackStatus.textContent = "Erreur réseau";
+  }
+  setTimeout(() => { if (feedbackStatus) feedbackStatus.textContent = ""; }, 2500);
+}
 
 /* ============ Boot ============ */
 document.addEventListener("DOMContentLoaded", loadData);
 sendBtn.onclick  = sendMsg;
 saveBtn.onclick  = saveTranscript;
 resetBtn && (resetBtn.onclick = resetConversation);
+feedbackBtn && (feedbackBtn.onclick = sendFeedback);
+
 inputEl?.addEventListener("keydown", (e) => {
   if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMsg(); }
 });
