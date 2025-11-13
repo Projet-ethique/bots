@@ -104,6 +104,8 @@
   <button class="tab-btn" data-tab="prompt-tab">Prompt (règles)</button>
   <button class="tab-btn" data-tab="help-tab">Explications</button>
   <button class="tab-btn" data-tab="feedback-tab">Commentaires</button>
+  <button class="tab-btn" data-tab="questions-tab">Questions</button>
+
 </div>
 
 
@@ -131,6 +133,15 @@
           Règles système/immersion. Fichier source : <code>./assets/prompt.js</code>. (Pour impacter le runtime, il faudra faire lire ce contenu par <code>app.js</code>.)
         </p>
       </div>
+      <!-- Questions (banque de relances) -->
+<div class="tab" id="questions-tab">
+  <textarea id="questionsEditor" spellcheck="false" style="min-height:180px"></textarea>
+  <p class="muted hint">
+    Éditez la banque de questions/relances par valeur (JSON). Les changements s’appliquent à chaud
+    et sont retenus localement. Un JSON invalide est encadré en rouge.
+  </p>
+</div>
+
       <!-- Explications -->
 <div class="tab" id="help-tab">
   <div id="helpContent" class="doc" style="min-height:180px; border:1px dashed #ccc6; border-radius:8px; padding:8px;">
