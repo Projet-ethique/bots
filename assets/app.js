@@ -235,31 +235,6 @@ async function playSfxThen(keys, profile){
     if (url) await playOneSfxAndWait(url, 800);
   }
 }
-// --- Cloud TTS via Worker (/api/tts) ---
-const USE_CLOUD_TTS = true; // toggle if needed
-async function speakWithCloudTTS(text, sfxKeys, profile) {
-  const voice  = "alloy";             // you can map persona->voice later if you want
-  const model  = "gpt-4o-mini-tts";   // low-latency TTS
-  const format = "mp3";
-
-  // small wait so SFX doesn't collide with speech
-  if (sfxKeys?.length) {
-    playSfxList(sfxKeys, profile);
-    await new Promise(r => setTimeout(r, 350)); // ~0.35s
-  }
-
-  const r = await fetch(`${API_BASE}/tts`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ text, voice, model, format })
-  });
-  if (!r.ok) throw new Error(`Cloud TTS HTTP ${r.status}`);
-
-  const blob = await r.blob();
-  const audio = new Audio(URL.createObjectURL(blob));
-  await audio.play();
-  setTimeout(() => { try { URL.revokeObjectURL(audio.src); } catch {} }, 15000);
-}
 
 /* ====== Bip test ====== */
 window.btTestBeep = async function () {
@@ -298,8 +273,10 @@ async function speakWithCloudTTS(text, sfxKeys, sfxProfile){
   const blob = await res.blob();
 
   // 4) jouer l'audio
-  const audio = new Audio(URL.createObjectURL(blob));
+  const url = URL.createObjectURL(blob);
+  const audio = new Audio(url);
   await audio.play();
+  setTimeout(() => { try { URL.revokeObjectURL(url); } catch {} }, 15000);
 }
 
 /* ====== Synthèse principale ====== */
