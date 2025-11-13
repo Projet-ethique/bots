@@ -1,0 +1,113 @@
+<!-- bots/docs/README.html -->
+<div style="display:flex; flex-direction:column; gap:10px; font-size:13px; line-height:1.45;">
+  <h3 style="margin:4px 0 0;">Comment éditer (pas-à-pas)</h3>
+
+  <p><strong>But des trois onglets</strong> en bas de la page : permettre des <em>tests à chaud</em> (sans IDE). Les modifications faites ici <u>n’écrasent pas</u> automatiquement les fichiers : vous testez, puis vous copiez-collez dans les fichiers réels quand c’est bon.</p>
+
+  <ol style="margin:0 0 0 18px; padding:0; display:flex; flex-direction:column; gap:8px;">
+    <li><strong>Monde</strong> — charge <code>./data/world.json</code> au démarrage. Éditez le JSON, puis cliquez « <em>Nouvelle conversation</em> » pour redémarrer le bot avec ce monde en mémoire. <em>Quand c’est bon</em> : copiez-collez vers <code>./data/world.json</code>.</li>
+    <li><strong>Personas.json</strong> — l’éditeur affiche la liste actuelle. Toute modification JSON <em>valide</em> remplace la liste en mémoire immédiatement (le menu Persona et l’avatar se mettent à jour). <em>Quand c’est bon</em> : copiez-collez vers <code>./data/personas.json</code>.</li>
+    <li><strong>Prompt (règles)</strong> — affiche le code de <code>./assets/prompt.js</code> pour consultation. Par défaut, ce que vous tapez ici n’est pas « rechargé » par l’app. Pour appliquer des règles, modifiez le vrai fichier <code>./assets/prompt.js</code> (copier-coller, puis publier).</li>
+  </ol>
+
+  <h4 style="margin:6px 0 0;">Formats attendus</h4>
+  <details open>
+    <summary><strong>Structure minimale de <code>world.json</code></strong></summary>
+<pre style="white-space:pre-wrap;background:#0001;padding:8px;border-radius:8px;overflow:auto;font-size:12px;">{
+  "lieu": "Belles-Terres — Côte-Nord",
+  "places": ["Salle du forum", "Port", "Plateau des éoliennes"],
+  "factions": ["Pêche &amp; traditions", "Techniciens éoliens", "Militants écologie", "Écotourisme"],
+  "constraints": ["Budget limité", "Bruits", "Oiseaux migrateurs"],
+  "dilemmas": ["Plus d’énergie ou préserver la vue ?", "Mines vs biodiversité"],
+  "factsBank": [
+    "Une éolienne typique fournit ...",
+    "Les terres rares servent ... (ne pas inventer de chiffres)."
+  ],
+  "recentEvents": ["Tempête récente", "Annonce d’un projet d’éoliennes"],
+  "memory": { "summary": "", "notes": [] }
+}</pre>
+    <p class="muted">Astuce : des phrases courtes dans <code>factsBank</code> — le bot les citera comme « mini-infos ».</p>
+  </details>
+
+  <details open>
+    <summary><strong>Éléments utiles dans <code>personas.json</code></strong></summary>
+<pre style="white-space:pre-wrap;background:#0001;padding:8px;border-radius:8px;overflow:auto;font-size:12px;">[
+  {
+    "id": "gaspard",
+    "displayName": "Gaspard — Pêche &amp; traditions",
+    "bio": "Vieux marin, grincheux mais gentil",
+    "sfxProfile": "male",
+    "avatar": "./assets/avatars/Gaspard_profile.png",
+    "piperVoice": "fr_FR-mls-medium",
+    "speaker": 5,
+    "farewellStyle": "touchy",
+    "relanceTriggers": ["proposition","plan","impacts","où"],
+    "taboos": ["moqueries","mensonges factuels"]
+  }
+]</pre>
+    <ul style="margin:6px 0 0 18px;">
+      <li><code>id</code> unique ; <code>displayName</code> affiché dans le menu.</li>
+      <li><code>avatar</code> (PNG/JPG 1024×1024 conseillé) — recadré via <code>object-fit:cover</code>.</li>
+      <li><code>piperVoice</code> + <code>speaker</code> : voices multi-locuteurs (si la voix le permet).</li>
+    </ul>
+  </details>
+
+  <h4 style="margin:6px 0 0;">Cycle « je teste → j’applique »</h4>
+  <ol style="margin:0 0 0 18px; display:flex; flex-direction:column; gap:6px;">
+    <li>Éditez dans l’onglet désiré (Monde/Personas/Prompt).</li>
+    <li>Test : basculez de persona si besoin, puis cliquez <strong>Nouvelle conversation</strong>.</li>
+    <li>Validez → copiez-collez dans le fichier source correspondant du dépôt, puis publiez (Pages/Workers).</li>
+  </ol>
+
+  <h4 style="margin:6px 0 0;">Combien de temps ça prend ? (ordre d’idée)</h4>
+  <ul style="margin:0 0 0 18px;">
+    <li><em>Petite retouche</em> (1 persona, correction texte) : 1–5 min.</li>
+    <li><em>Refonte d’un monde</em> : 10–30 min selon la quantité.</li>
+    <li><em>Changement de prompt</em> : 5–15 min (puis copier dans <code>assets/prompt.js</code>).</li>
+  </ul>
+
+  <h4 style="margin:6px 0 0;">Ce qu’il ne faut pas faire</h4>
+  <ul style="margin:0 0 0 18px;">
+    <li>Pas de commentaires <code>// …</code> dans le JSON (utilisez un champ <code>"note": "..."</code> si besoin).</li>
+    <li>Évitez le JSON invalide (guillemets, virgules, crochets).</li>
+    <li>Ne touchez pas aux dossiers <code>assets/vendor/piper-tts-web/…</code> si vous n’êtes pas sûr.</li>
+    <li>Si doute factuel : écrivez « à vérifier » ; ne pas inventer des chiffres.</li>
+  </ul>
+
+  <h4 style="margin:6px 0 0;">Sauvegarde / mémoire</h4>
+  <ul style="margin:0 0 0 18px;">
+    <li><strong>Sauvegarder la session</strong> : envoie les messages (NDJSON) vers l’API (Cloudflare R2) si configurée.</li>
+    <li><strong>Mémoire</strong> (petit résumé) via <code>/api/memory</code> (si 404, la route n’est pas encore déployée).</li>
+  </ul>
+
+  <h4 style="margin:6px 0 0;">Voix (TTS)</h4>
+  <ul style="margin:0 0 0 18px;">
+    <li>Cochez <strong>Voix</strong> pour lire les réponses. Bip test console : <code>btTestBeep()</code>.</li>
+    <li>Les personas peuvent définir <code>piperVoice</code> et <code>speaker</code>.</li>
+    <li>Si blocage, la maquette peut basculer sur un repli (Mintplex ou WebSpeech).</li>
+  </ul>
+
+  <h4 style="margin:6px 0 0;">Publication</h4>
+  <ul style="margin:0 0 0 18px;">
+    <li>GitHub Pages : ~1 min de propagation après un push.</li>
+    <li>Après maj de <code>data/*.json</code> ou <code>assets/prompt.js</code>, faites un rechargement forcé (Ctrl+F5).</li>
+  </ul>
+
+  <h4 style="margin:6px 0 0;">FAQ express</h4>
+  <details>
+    <summary>Je modifie « Prompt (règles) » mais rien ne change</summary>
+    <p>Normal : l’éditeur est informatif. Appliquez vos changements dans <code>./assets/prompt.js</code>, puis publiez.</p>
+  </details>
+  <details>
+    <summary>Je change un persona et le menu se met à jour : c’est durable ?</summary>
+    <p>Les changements sont en mémoire pour le test. Pour les rendre permanents, copiez-collez dans <code>./data/personas.json</code>.</p>
+  </details>
+  <details>
+    <summary>À quoi sert « Nouvelle conversation » ?</summary>
+    <p>À repartir d’un historique vide, en réappliquant le monde/persona courants.</p>
+  </details>
+  <details>
+    <summary>Comment ajouter un avatar ?</summary>
+    <p>Placez une image (idéalement 1024×1024) dans <code>./assets/avatars/</code> et référencez-la via <code>"avatar"</code> dans le persona. L’affichage recadre automatiquement.</p>
+  </details>
+</div>
