@@ -6,3 +6,4 @@ compatibility_date = "2025-11-11"
 [[r2_buckets]]
 binding = "LOGS_BUCKET"     # => accessible dans le code via env.LOGS_BUCKET
 bucket_name = "bt-logs"     # => crée/active ce bucket dans le dashboard R2
+workers_dev = true
