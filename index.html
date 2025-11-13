@@ -103,7 +103,9 @@
   <button class="tab-btn" data-tab="personas-tab">Personas.json</button>
   <button class="tab-btn" data-tab="prompt-tab">Prompt (règles)</button>
   <button class="tab-btn" data-tab="help-tab">Explications</button>
+  <button class="tab-btn" data-tab="feedback-tab">Commentaires</button>
 </div>
+
 
 
       <!-- Monde -->
@@ -135,6 +137,15 @@
     <em class="muted">Chargera le guide depuis <code>./docs/README.html</code> au premier clic…</em>
   </div>
   <p class="muted hint">Astuce : éditez librement <code>docs/README.html</code> (HTML simple).</p>
+</div>
+<!-- Commentaires -->
+<div class="tab" id="feedback-tab">
+  <textarea id="feedbackBox" placeholder="Laissez un commentaire (idée, bug, ressenti)…"></textarea>
+  <div class="row">
+    <button id="feedbackSend">Envoyer</button>
+    <span class="muted" id="feedbackStatus"></span>
+  </div>
+  <p class="muted hint">Les commentaires sont enregistrés (classe/utilisateur, persona courant, datés) dans R2 via <code>/api/save</code>.</p>
 </div>
 
     </section>
