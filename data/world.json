@@ -27,9 +27,76 @@
     "Choisir un site éloigné des couloirs d'oiseaux limite les collisions.",
     "Un parc éolien nécessite de l'entretien régulier et une concertation locale."
   ],
-  "recentEvents": [
+    "recentEvents": [
     "Un panneau explicatif installé à l’Anse-Bleue sur les migrations d’automne.",
     "Le conseil du village a ouvert une consultation publique pour le Plateau Neutre."
   ],
+
+  "lore": {
+    "headline": "Découverte de terres rares sur les territoires sacrés des Ancêtres.",
+    "background": "Les géologues de Creuser-Puiser ont identifié des gisements rentables (dont du néodyme) sous des terres considérées comme sacrées. La nouvelle bouleverse les Belles-Terres.",
+    "industryProposal": "Creuser-Puiser propose des usines au néodyme et le développement d’un parc d’éoliennes sur la côte ventée (solution locale et durable, création d’emplois).",
+    "publicDebate": "La région est partagée entre traditions (pêche artisanale, élevage de chevaux) et modernisation économique. Le gouvernement régional, à majorité progressiste, lance une consultation populaire pour apaiser la situation.",
+    "invitation": "Vous êtes convié·e à défendre votre point de vue dans un forum ouvert (‘tables de paroles’)."
+  },
+
+  "factionsProfiles": [
+    {
+      "id": "chamanes-ancestraux",
+      "displayName": "Société des chamanes ancestraux",
+      "position": { "mining": "non (sacré)", "wind": "oui (zones spirituellement neutres)", "tourism": "sobre" },
+      "summary": "Opposés à toute exploitation minière sur terres sacrées; respect inconditionnel des croyances; le profit ‘corrompt l’Esprit de tous les esprits’.",
+      "talkingPoints": [
+        "La paix spirituelle entre tous les êtres (toutes dimensions) prime.",
+        "Pas de mines sur les lieux sacrés; dialogue possible ailleurs.",
+        "Les éoliennes ne posent pas de problème si implantées en zones neutres."
+      ]
+    },
+    {
+      "id": "creuser-puiser",
+      "displayName": "Employés de Creuser-Puiser",
+      "position": { "mining": "oui (encadré)", "wind": "oui", "tourism": "neutre" },
+      "summary": "Habitant·e·s de la région, favorables aux mines et aux éoliennes pour l’essor économique et social (emplois, montée en gamme des écoles/soins).",
+      "talkingPoints": [
+        "Occasion de doter la région d’écoles supérieures et d’un meilleur système de soins.",
+        "Proposent aux chamanes une ‘migration spirituelle’ vers une zone protégée, sans enjeu économique.",
+        "Chaîne de valeur locale (du néodyme aux moteurs d’éoliennes)."
+      ]
+    },
+    {
+      "id": "liberte-nature",
+      "displayName": "Association Liberté & Nature",
+      "position": { "mining": "non", "wind": "non (protection paysages/biotopes)", "tourism": "écotourisme" },
+      "summary": "Opposés aux mines et aux éoliennes au nom du paysage et des biotopes rares; actions choc mais pacifiques; plaident pour une protection stricte.",
+      "talkingPoints": [
+        "Occupation pacifique du site minier pour alerter sans violence.",
+        "Plan de préservation stricte de l’environnement.",
+        "Écotourisme comme modèle sobre et viable pour la région."
+      ]
+    },
+    {
+      "id": "rebelle-terre",
+      "displayName": "Réseau @Rebelle-Terre",
+      "position": { "mining": "plutôt oui", "wind": "non (moche/inefficace/dangereux oiseaux)", "tourism": "mitigé" },
+      "summary": "Pragmatiques: ‘il faut bien gagner sa vie’. Peu sensibles aux arguments spirituels; refus des éoliennes; sceptiques quant à l’écotourisme.",
+      "talkingPoints": [
+        "La paix spirituelle est une croyance personnelle, pas un fait public.",
+        "Les éoliennes ‘défigurent’ et nuisent aux oiseaux.",
+        "Écotourisme: bénéfices incertains, risques de nuisances."
+      ]
+    },
+    {
+      "id": "peche-chevaux-tradition",
+      "displayName": "Pêche, chevaux & tradition",
+      "position": { "mining": "très prudent", "wind": "loin des routes/ports", "tourism": "très sobre" },
+      "summary": "Mouvement conservateur autour de la pêche artisanale et de l’élevage de chevaux. Méfiance envers l’afflux de touristes et de techniques.",
+      "talkingPoints": [
+        "Respect des méthodes traditionnelles ‘pour tous les êtres vivants’.",
+        "Population plutôt âgée, rejointe par des jeunes anti-consuméristes.",
+        "Préserver le silence des ports et les routes de chevaux."
+      ]
+    }
+  ],
+
   "rappels": ["Rester respectueux", "Écouter les autres", "Poser des questions courtes"]
 }
