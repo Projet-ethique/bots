@@ -36,22 +36,15 @@
     .tab.active { display:block; }
     .hint { margin-top:6px; }
     /* Avatar persona en haut-droite de la fenêtre de chat */
-/* taille de la “case” (change 72px si tu veux plus grand) */
-:root { --avatar: 72px; }
-
-.chat-panel { position: relative; }
-
-/* avatar rond, recadré sans déformation */
-.persona-avatar{
-  position:absolute; top:10px; right:12px;
-  width:var(--avatar); height:var(--avatar);
-  border-radius:50%;
-  object-fit:cover;            /* remplit le cadre sans distorsion */
-  object-position:center;      /* recadre au centre */
-  border:1px solid #ccc6; box-shadow:0 2px 8px #0002;
-}
-
-
+    :root { --avatar: 72px; }
+    .chat-panel { position: relative; }
+    .persona-avatar{
+      position:absolute; top:10px; right:12px;
+      width:var(--avatar); height:var(--avatar);
+      border-radius:50%;
+      object-fit:cover; object-position:center;
+      border:1px solid #ccc6; box-shadow:0 2px 8px #0002;
+    }
   </style>
 </head>
 <body>
@@ -62,8 +55,8 @@
 
   <main>
     <!-- Zone Chat (haut) -->
-<section class="panel chat-panel">
-  <img id="avatar" class="persona-avatar" alt="avatar" src="">
+    <section class="panel chat-panel">
+      <img id="avatar" class="persona-avatar" alt="avatar" src="">
       <div class="row" style="gap:12px; margin-bottom:8px;">
         <label>Persona:
           <select id="persona"></select>
@@ -102,6 +95,7 @@
         <button class="tab-btn active" data-tab="world-tab">Monde</button>
         <button class="tab-btn" data-tab="personas-tab">Personas.json</button>
         <button class="tab-btn" data-tab="prompt-tab">Prompt (règles)</button>
+        <button class="tab-btn" data-tab="help-tab">Explications</button>
       </div>
 
       <!-- Monde -->
@@ -127,6 +121,14 @@
           Règles système/immersion. Fichier source : <code>./assets/prompt.js</code>. (Pour impacter le runtime, il faudra faire lire ce contenu par <code>app.js</code>.)
         </p>
       </div>
+
+      <!-- Explications (chargées depuis docs/README.html) -->
+      <div class="tab" id="help-tab">
+        <div id="helpContent" class="doc" style="min-height:180px; border:1px dashed #ccc6; border-radius:8px; padding:8px;">
+          <em class="muted">Chargera le guide depuis <code>./docs/README.html</code> au premier clic…</em>
+        </div>
+        <p class="muted hint">Astuce : vous pouvez éditer librement <code>docs/README.html</code> (HTML simple).</p>
+      </div>
     </section>
   </main>
 
@@ -145,16 +147,34 @@
 
   <!-- Mini-script onglets (indépendant de app.js) -->
   <script>
-    // gestion simple des onglets en bas
+    // gestion simple des onglets en bas + lazy-load de README.html
     const tabBtns = document.querySelectorAll('.tab-btn');
     const tabs    = document.querySelectorAll('.tab');
+    let helpLoaded = false;
+
+    function loadHelpOnce() {
+      if (helpLoaded) return;
+      const box = document.getElementById('helpContent');
+      if (!box) return;
+      fetch('./docs/README.html', { cache: 'no-store' })
+        .then(r => r.ok ? r.text() : Promise.reject(new Error('README introuvable')))
+        .then(html => { box.innerHTML = html; helpLoaded = true; })
+        .catch(err => {
+          box.innerHTML = '<p style="color:tomato">Impossible de charger <code>docs/README.html</code> : ' + (err.message || err) + '</p>';
+        });
+    }
+
     tabBtns.forEach(btn => {
       btn.addEventListener('click', () => {
         const id = btn.dataset.tab;
         tabBtns.forEach(b => b.classList.toggle('active', b === btn));
         tabs.forEach(t => t.classList.toggle('active', t.id === id));
+        if (id === 'help-tab') loadHelpOnce();
       });
     });
+
+    // si l'onglet Explications est actif par défaut (rare), charge aussi
+    if (document.querySelector('.tab.active#help-tab')) loadHelpOnce();
   </script>
 </body>
 </html>
