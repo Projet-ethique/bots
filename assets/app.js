@@ -656,9 +656,11 @@ async function sendMsg() {
   let world; try { world = JSON.parse(worldTa.value || "{}"); } catch { world = DEFAULT_WORLD; }
 
 const system = makeSystem(persona, { ...world, memory: MEMORY });
-  const chosenModel = modelSel?.value || "gpt-4o-mini";
+const chosenModel = modelSel?.value || "gpt-4o-mini";
 
-  let reply = "(pas de réponse)";
+let reply = "(pas de réponse)";
+sendBtn.disabled = true;               // <— DÉSACTIVE avant réseau
+try {
   try {
     const r = await fetch(`${API_BASE}/chat`, {
       method: "POST",
@@ -685,6 +687,10 @@ const system = makeSystem(persona, { ...world, memory: MEMORY });
 
   updateMemory(content, reply);
   saveMemory(); // async
+} finally {
+  sendBtn.disabled = false;            // <— RÉACTIVE quoi qu’il arrive
+}
+
 }
 
 async function saveTranscript() {
