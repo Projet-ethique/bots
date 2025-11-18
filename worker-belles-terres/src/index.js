@@ -1,11 +1,12 @@
 // worker-belles-terres/src/index.js
 // API Belles-Terres (Cloudflare Worker):
-//   - POST /api/chat
+//   - POST /api/chat        (OpenAI par défaut ; Gemini si model commence par "gemini-")
 //   - POST /api/save
 //   - GET/POST /api/memory
-//   - GET/POST /api/tts  (OpenAI TTS, stream audio; supporte ?style= …)
+//   - GET/POST /api/tts     (OpenAI TTS, stream audio; supporte ?style= …)
 //
-// Requiert: env.OPENAI_API_KEY ; Binding R2: LOGS_BUCKET
+// Requiert: env.OPENAI_API_KEY ; (optionnel) env.GEMINI_API_KEY si usage Gemini
+// Binding R2: LOGS_BUCKET
 // CORS inclus.
 
 const OPENAI = "https://api.openai.com/v1";
@@ -26,9 +27,51 @@ export default {
 
       // ---- Chat ----
       if (url.pathname === "/api/chat" && req.method === "POST") {
-        const { messages = [], system = "", model = "gpt-4o-mini" } = await req.json();
+        const { messages = [], system = "", model = "gpt-4o-mini", temperature = 0.7 } = await req.json();
+
+        // Branche Gemini si le modèle commence par "gemini-"
+        if (model && model.startsWith("gemini-")) {
+          if (!env.GEMINI_API_KEY) return json({ error: "gemini_api_key_missing" }, 500);
+
+          // Convertit l'historique au format Gemini
+          const toGemini = (msgs) =>
+            msgs
+              .filter(m => m && m.role && typeof m.content === "string" && m.content.trim().length)
+              .map(m => ({
+                role: m.role === "assistant" ? "model" : "user",
+                parts: [{ text: m.content }]
+              }));
+
+          const gReq = {
+            contents: toGemini(messages),
+            generationConfig: { temperature }
+          };
+          if (system && system.trim()) {
+            gReq.systemInstruction = { parts: [{ text: system }] };
+          }
+
+          const r = await fetch(
+            `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${env.GEMINI_API_KEY}`,
+            { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(gReq) }
+          );
+
+          if (!r.ok) {
+            const t = await r.text().catch(() => "");
+            return json({ error: "gemini_error", detail: t }, r.status);
+          }
+
+          const data = await r.json();
+          const reply =
+            (data?.candidates?.[0]?.content?.parts || [])
+              .map(p => p?.text || "")
+              .join("") || "";
+          return json({ reply });
+        }
+
+        // --- OpenAI (par défaut)
         const body = {
           model,
+          temperature,
           messages: [
             ...(system ? [{ role: "system", content: system }] : []),
             ...messages
@@ -45,7 +88,7 @@ export default {
         });
 
         if (!r.ok) {
-          const t = await r.text();
+          const t = await r.text().catch(() => "");
           return json({ error: "openai_error", detail: t }, r.status);
         }
 
@@ -56,7 +99,14 @@ export default {
 
       // ---- Save transcript NDJSON into R2 ----
       if (url.pathname === "/api/save" && req.method === "POST") {
-        const { sessionId, transcript, classId = "default", userId = "anon", contentType = "text/plain" } = await req.json();
+        const {
+          sessionId,
+          transcript,
+          classId = "default",
+          userId = "anon",
+          contentType = "text/plain"
+        } = await req.json();
+
         if (!sessionId || !transcript) return json({ error: "bad_request" }, 400);
 
         const key = `logs/${classId}/${new Date().toISOString().slice(0,10)}_${sessionId}.ndjson`;
@@ -78,7 +128,9 @@ export default {
           const { classId = "default", userId = "anon", memory } = await req.json();
           if (!memory) return json({ error: "bad_request" }, 400);
           const key = `memory/${classId}/${userId}.json`;
-          await env.LOGS_BUCKET.put(key, JSON.stringify(memory), { httpMetadata: { contentType: "application/json" } });
+          await env.LOGS_BUCKET.put(key, JSON.stringify(memory), {
+            httpMetadata: { contentType: "application/json" }
+          });
           return json({ ok: true, key });
         }
       }
