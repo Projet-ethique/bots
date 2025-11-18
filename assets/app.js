@@ -461,7 +461,10 @@ const MODEL_LIST = [
   { id: "gpt-4o",        label: "gpt-4o" },
   { id: "gpt-4.1",       label: "gpt-4.1" },
   { id: "gpt-5",         label: "gpt-5 (si accès)" },
-  { id: "gpt-3.5-turbo", label: "gpt-3.5-turbo (ancien)" }
+  { id: "gpt-3.5-turbo", label: "gpt-3.5-turbo (ancien)" },
+  { id: "gemini-1.5-flash", label: "gemini-1.5-flash (Google)" },
+  { id: "gemini-1.5-pro",   label: "gemini-1.5-pro (Google)" }
+
 ];
 
 /* ============ Chargement ============ */
